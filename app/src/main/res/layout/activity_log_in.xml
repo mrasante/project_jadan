@@ -7,8 +7,9 @@
     tools:context="support.esri.com.fuse.LogInActivity"
     android:padding="@dimen/activity_vertical_margin">
 
-    <include layout="@layout/content_log_in" />
 
+
+    <include layout="@layout/content_log_in" />
 
 
 </LinearLayout>

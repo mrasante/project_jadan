@@ -28,7 +28,11 @@
         <activity
             android:name=".LogInActivity"
             android:label="@string/title_activity_log_in"
-            android:theme="@style/Theme.AppTheme.NoActionBar"></activity>
+            android:theme="@style/Theme.AppTheme.NoActionBar" />
+        <activity
+            android:name=".MapActivity"
+            android:label="@string/title_activity_map"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 
 </manifest>

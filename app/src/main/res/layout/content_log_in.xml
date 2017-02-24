@@ -13,4 +13,14 @@
     tools:context="support.esri.com.fuse.LogInActivity"
     tools:showIn="@layout/activity_log_in">
 
+    <Button
+        android:text="x"
+        android:layout_width="30dp"
+        android:id="@+id/closer"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:textSize="10sp"
+        android:layout_height="30dp"
+        android:theme="@style/Theme.AppTheme.NoActionBar"
+        android:background="?android:attr/colorBackground" />
 </RelativeLayout>
