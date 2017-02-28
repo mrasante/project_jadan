@@ -17,6 +17,7 @@ public class Launcher extends AppCompatActivity {
             @Override
             public void run() {
                 Intent intent =  new Intent(getApplicationContext(), MapActivity.class);
+                intent.putExtra("Authenticated",getIntent().getStringExtra("Credential_Log_In"));
                 startActivity(intent);
             }
         }, DELAY_TIME);
