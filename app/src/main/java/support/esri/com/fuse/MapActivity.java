@@ -1,17 +1,24 @@
 package support.esri.com.fuse;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
 
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
@@ -19,9 +26,26 @@ import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
-import com.esri.arcgisruntime.portal.PortalUser;
+import com.mikepenz.materialdrawer.AccountHeader;
+import com.mikepenz.materialdrawer.AccountHeaderBuilder;
+import com.mikepenz.materialdrawer.Drawer;
+import com.mikepenz.materialdrawer.DrawerBuilder;
+import com.mikepenz.materialdrawer.MiniDrawer;
+import com.mikepenz.materialdrawer.holder.BadgeStyle;
+import com.mikepenz.materialdrawer.interfaces.ICrossfader;
+import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
+import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
+import com.mikepenz.materialdrawer.model.SecondaryDrawerItem;
+import com.mikepenz.materialdrawer.model.SectionDrawerItem;
 import com.mikepenz.materialdrawer.model.interfaces.IProfile;
+import com.mikepenz.materialdrawer.util.DrawerUIUtils;
+import com.mikepenz.materialize.util.UIUtils;
+import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.ExecutionException;
 
 import static support.esri.com.fuse.LogInActivity.fusePortal;
@@ -32,6 +56,7 @@ public class MapActivity extends AppCompatActivity {
     private MapView fuseMapView;
     private LocationDisplay locationDisplay;
     private static Toolbar toolbar;
+    private Drawer drawer;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -42,51 +67,138 @@ public class MapActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         //create and add the map with basemap
-        fuseMapView = (MapView)findViewById(R.id.fuse_map_view);
+        fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
         fuseMap = new ArcGISMap(Basemap.createStreetsNightVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
 
         //welcome the user
-        if(fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")){
-            Snackbar.make(fuseMapView, "Welcome "+ fusePortal.getUser().getFullName(), Snackbar.LENGTH_LONG).show();
+        if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
+            Snackbar.make(fuseMapView, "Welcome " + fusePortal.getUser().getFullName(), Snackbar.LENGTH_LONG).show();
         }
 
         //create the Drawer
         try {
-            createMaterialDrawer(fusePortal.getUser());
+            createMaterialDrawer(savedInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void createMaterialDrawer(PortalUser portalUser) throws Exception{
+
+    /**
+     * Use this this created the navigation drawer. Uses material drawer by Mike Penz
+     * @param savedInstanceState
+     * @param drawerToolbar
+     * @param localIntent
+     * @throws Exception
+     */
+
+    private void createMaterialDrawer(Bundle savedInstanceState, Toolbar drawerToolbar, Intent localIntent) throws Exception {
         IProfile profile = null;
+        Bitmap userImage = null;
+        String userFullName = null;
+        //retrieve who sent you extra from intent.
+        String whoSentYou = getIntent().getStringExtra("whoSentYou");
+        if (whoSentYou.equalsIgnoreCase("arcgis.com")) {
+            userImage = new PortalNetworkAsyncTask().execute().get();
+            userFullName = fusePortal.getUser().getFullName();
+        }else if(whoSentYou.equalsIgnoreCase("Twitter")){
+            String imageUrl = localIntent.getStringExtra("twitterProfileUrl");
+            Log.e("URLString ", imageUrl);
+            userFullName = localIntent.getStringExtra("twitterUsername");
+            userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
+        }else if(whoSentYou.equalsIgnoreCase("Facebook")){
+            String imageUrl = localIntent.getStringExtra("facebookProfileUrl");
+            userFullName = localIntent.getStringExtra("facebookUsername");
+            userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
+        }
 
-        //if the user logged in with facebook or twitter account for the respective profile.
+        //craete and populate the drawer
+        if(userFullName != null && userImage != null){
+            profile = new ProfileDrawerItem().withName(userFullName).withIcon(userImage);
+        }
 
+        AccountHeader headerResult = new AccountHeaderBuilder().withActivity(this)
+                .withHeaderBackground(R.drawable.material_drawer_badge)
+                .withEmailTypeface(Typeface.SANS_SERIF)
+                .withSavedInstance(savedInstanceState)
+                .addProfiles(profile)
+                .build();
 
-        //use the below for arcgis.com details
-        Bitmap userImage = new PortalNetworkAsyncTask().execute().get();
-        String userFullName = fusePortal.getUser().getFullName();
+        //create drawer
+        drawer = new DrawerBuilder()
+                .withActivity(this)
+                .withSavedInstance(savedInstanceState)
+                .withDrawerLayout(R.layout.drawer_layout)
+                .withGenerateMiniDrawer(true)
+                .withToolbar(drawerToolbar)
+                .withAccountHeader(headerResult)
+                .addDrawerItems(
+                        new PrimaryDrawerItem().withName("Clear Map").withIdentifier(1).withTextColor(Color.BLACK),
+                        new PrimaryDrawerItem().withName("Routes").withBadge("22").withTextColor(Color.BLACK).withBadgeStyle(
+                                new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withSelectable(true),
+                        new PrimaryDrawerItem().withName("Hospitals").withIdentifier(3).withTextColor(Color.BLACK),
+                        new PrimaryDrawerItem().withName("Bus Stops").withIdentifier(4).withTextColor(Color.BLACK),
+                        new PrimaryDrawerItem().withName("Traffic").withIdentifier(5).withTextColor(Color.BLACK),
+                        new PrimaryDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.BLACK),
+
+                        new SectionDrawerItem().withDivider(true),
+                        new SecondaryDrawerItem().withName("Settings").withIdentifier(9).withTextColor(Color.BLACK),
+                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(9).withTextColor(Color.BLACK)
+                        //new SecondaryDrawerItem().withName("About").withIcon(R.drawable.info).withIdentifier(9).withTag("Bullhorn").withTextColor(Color.BLACK)
+                )
+                .withShowDrawerOnFirstLaunch(true)
+                .build();
+
+        final CrossfadeDrawerLayout crossfadeDrawerLayout = (CrossfadeDrawerLayout) drawer.getDrawerLayout();
+        //define maxDrawerWidth
+        crossfadeDrawerLayout.setMaxWidthPx(DrawerUIUtils.getOptimalDrawerWidth(this));
+        //add second view (which is the miniDrawer)
+        final MiniDrawer miniResult = drawer.getMiniDrawer();
+        //build the view for the MiniDrawer
+        View view = miniResult.build(this);
+        view.setBackgroundColor(UIUtils.getThemeColorFromAttrOrRes(this, com.mikepenz.materialdrawer.R.attr.material_drawer_background,
+                com.mikepenz.materialdrawer.R.color.material_drawer_dark_background));
+        //we do not have the MiniDrawer view during CrossfadeDrawerLayout creation so we will add it here
+        crossfadeDrawerLayout.getSmallView().addView(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+
+        //define the crossfader to be used with the miniDrawer. This is required to be able to automatically toggle open / close
+        miniResult.withCrossFader(new ICrossfader() {
+            @Override
+            public void crossfade() {
+                boolean isFaded = isCrossfaded();
+                crossfadeDrawerLayout.crossfade(400);
+
+                //only close the drawer if we were already faded and want to close it now
+                if (isFaded) {
+                    drawer.getDrawerLayout().closeDrawer(GravityCompat.START);
+                }
+            }
+
+            @Override
+            public boolean isCrossfaded() {
+                return crossfadeDrawerLayout.isCrossfaded();
+            }
+        });
     }
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
-    public boolean requestGPSLocation(){
+    public boolean requestGPSLocation() {
         boolean granted = false;
-        if(ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION)==
-                PackageManager.PERMISSION_GRANTED){
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED) {
             locationDisplay = fuseMapView.getLocationDisplay();
             locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
             locationDisplay.startAsync();
-            if(locationDisplay.isStarted()){
+            if (locationDisplay.isStarted()) {
                 fuseMap.setInitialViewpoint(new Viewpoint(locationDisplay.getLocation().getPosition(), 7));
                 granted = true;
             }
-        }else {
-            String [] arrayPerms = {Manifest.permission.ACCESS_FINE_LOCATION};
-            int [] grantedPerms = {PackageManager.PERMISSION_GRANTED};
+        } else {
+            String[] arrayPerms = {Manifest.permission.ACCESS_FINE_LOCATION};
+            int[] grantedPerms = {PackageManager.PERMISSION_GRANTED};
             requestPermissions(arrayPerms, 0);
             onRequestPermissionsResult(0, arrayPerms, grantedPerms);
         }
@@ -96,8 +208,8 @@ public class MapActivity extends AppCompatActivity {
 
 
     @Override
-    public void onRequestPermissionsResult(int value, String[] permArray, int[] grantedPerms){
-        if(grantedPerms[0] == PackageManager.PERMISSION_GRANTED){
+    public void onRequestPermissionsResult(int value, String[] permArray, int[] grantedPerms) {
+        if (grantedPerms[0] == PackageManager.PERMISSION_GRANTED) {
             locationDisplay = fuseMapView.getLocationDisplay();
             locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
             locationDisplay.startAsync();
@@ -105,22 +217,50 @@ public class MapActivity extends AppCompatActivity {
 
     }
 
-    private class PortalNetworkAsyncTask extends AsyncTask<Void, Void, Bitmap>{
+    private class PortalNetworkAsyncTask extends AsyncTask<Void, Void, Bitmap> {
 
         @Override
-        public Bitmap doInBackground(Void... portals){
+        public Bitmap doInBackground(Void... portals) {
             Bitmap bitmap = null;
-            if(fusePortal.getLoadStatus() == LoadStatus.LOADED){
-                try{
-                    byte[] thumbnailByte = fusePortal.getPortalInfo().fetchPortalThumbnailAsync().get();
+            if (fusePortal.getLoadStatus() == LoadStatus.LOADED) {
+                try {
+                    byte[] thumbnailByte = fusePortal.getUser().fetchThumbnailAsync().get();
                     bitmap = BitmapFactory.decodeByteArray(thumbnailByte, 0, thumbnailByte.length);
-                }catch(ExecutionException|InterruptedException exInt){
+                } catch (ExecutionException | InterruptedException exInt) {
 
                 }
             }
             return bitmap;
         }
+    }
 
+    private class BitmapViaNetwork extends AsyncTask<URL, Void, Bitmap>{
+        @Override
+        protected Bitmap doInBackground(URL... urls) {
+            Bitmap bitmap = null;
+            HttpURLConnection httpURLConnection = null;
+            InputStream is = null;
+            try {
+                httpURLConnection  = (HttpURLConnection)urls[0].openConnection();
+                httpURLConnection.setDoInput(true);
+                httpURLConnection.connect();
+                is = httpURLConnection.getInputStream();
+
+                bitmap = BitmapFactory.decodeStream(is);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }finally {
+                if(httpURLConnection != null && is != null){
+                    httpURLConnection.disconnect();
+                    try {
+                        is.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return bitmap;
+        }
     }
 
 }

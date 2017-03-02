@@ -8,6 +8,8 @@
     <string name="facebook_app_id">1861770907437670</string>
     <string name="facebook_app_secret">5350844098bf0b0e7a039ea3ca4d629b</string>
     <string name="fb_login_protocol_scheme">fb1861770907437670</string>
+    <string name="twitter_api_key">aLMAF5uq1q24ANa1T8tzIM6rG</string>
+    <string name="twitter_api_secret">KJSY3IYdCpGRZarozX3McLIuWRCgZInL23EvnYwmO4VVLpaa9C</string>
     <string name="remember_me">Remember me</string>
     <string name="sign_in">Sign In</string>
     <string name="arcgis_com_password">arcgis.com password</string>

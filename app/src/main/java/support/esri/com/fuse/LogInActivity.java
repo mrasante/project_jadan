@@ -14,7 +14,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.portal.Portal;
@@ -34,24 +33,22 @@ import com.twitter.sdk.android.core.TwitterAuthConfig;
 import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
 import com.twitter.sdk.android.core.identity.TwitterLoginButton;
+import com.twitter.sdk.android.core.models.User;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import io.fabric.sdk.android.Fabric;
+import retrofit2.Call;
 
 
 public class LogInActivity extends AppCompatActivity {
 
     // Note: Your consumer key and secret should be obfuscated in your source code before shipping.
-    private static final String TWITTER_KEY = "mrasante";
-    private static final String TWITTER_SECRET = "applegoe";
 
 
     private CheckBox rememberMeChkBox;
     private static final String PREFERENCES = "REMEMBER ME";
-    private static final String PREF_USERNAME = "username";
-    private static final String PREF_PASSWORD = "password";
     private SharedPreferences sharedPreferences;
     private EditText usernameEditText;
     private EditText passwordEditText;
@@ -62,12 +59,12 @@ public class LogInActivity extends AppCompatActivity {
     private ProgressDialog progressDialog;
     private LoginButton facebookButton;
     private CallbackManager facebookCallbackManager;
-    private TwitterLoginButton loginButton;
+    private TwitterLoginButton twitterLoginButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        TwitterAuthConfig authConfig = new TwitterAuthConfig(TWITTER_KEY, TWITTER_SECRET);
+        TwitterAuthConfig authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
         Fabric.with(this, new Twitter(authConfig));
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_log_in);
@@ -90,19 +87,34 @@ public class LogInActivity extends AppCompatActivity {
     }
 
     private void authenticateWithTwitter() {
-        loginButton = (TwitterLoginButton) findViewById(R.id.twitter_login_button);
-        loginButton.setCallback(new Callback<TwitterSession>() {
+        twitterLoginButton = (TwitterLoginButton) findViewById(R.id.twitter_login_button);
+        twitterLoginButton.setCallback(new Callback<TwitterSession>() {
             @Override
             public void success(Result<TwitterSession> result) {
                 // The TwitterSession is also available through:
                 // Twitter.getInstance().core.getSessionManager().getActiveSession()
-                TwitterSession session = result.data;
 
-                // TODO: Remove toast and use the TwitterSession's userID
-                // with your app's user model
-                String msg = "@" + session.getUserName() + " logged in! (#" + session.getUserId() + ")";
-                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+                final TwitterSession twitterSession = result.data;
+                final Call<User> userResult = Twitter.getApiClient(twitterSession).getAccountService().verifyCredentials(true, true);
+                userResult.enqueue(new Callback<User>() {
+                    @Override
+                    public void success(Result<User> result) {
+                        User twitterUser = result.data;
+                        Intent intent = new Intent(getApplicationContext(), Launcher.class);
+                        intent.putExtra("whoSentYou", "Twitter");
+                        intent.putExtra("twitterProfileByte", twitterUser.profileImageUrl);
+                        intent.putExtra("twitterUsername", twitterUser.name);
+                        startActivity(intent);
+                    }
+
+                    @Override
+                    public void failure(TwitterException exception) {
+                        Log.d("TwitterKit", "Login with Twitter failure", exception);
+                    }
+                });
+
             }
+
             @Override
             public void failure(TwitterException exception) {
                 Log.d("TwitterKit", "Login with Twitter failure", exception);
@@ -116,7 +128,8 @@ public class LogInActivity extends AppCompatActivity {
      * Requests permissions to read profile, email and user's friends list
      */
 
-    private void authenticateWithFacebook() {
+    private void
+    authenticateWithFacebook() {
         facebookButton = (LoginButton) findViewById(R.id.facebook_login_button);
         facebookButton.setReadPermissions("public_profile", "email", "user_friends");
         facebookCallbackManager = CallbackManager.Factory.create();
@@ -124,13 +137,12 @@ public class LogInActivity extends AppCompatActivity {
             @Override
             public void onSuccess(LoginResult loginResult) {
                 new ProfileTracker() {
-
                     @Override
                     protected void onCurrentProfileChanged(Profile oldProfile, Profile currentProfile) {
                         Intent intent = new Intent(getApplicationContext(), Launcher.class);
                         intent.putExtra("whoSentYou", "Facebook");
                         intent.putExtra("FacebookUserFullName", currentProfile.getName());
-                        intent.putExtra("FacebookUserProfileURL", currentProfile.getProfilePictureUri(10, 10));
+                        intent.putExtra("FacebookUserProfileURL", currentProfile.getProfilePictureUri(40, 40).toString());
                         startActivity(intent);
                     }
                 };
@@ -149,6 +161,9 @@ public class LogInActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Use this to log in to arcgis.com and load content
+     */
 
     private void authenticateWithArcGIS() {
         //init the sharedPreferences reference;
@@ -179,6 +194,10 @@ public class LogInActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Use this for anonymous log in.
+     *
+     */
     private void startLauncherActivity() {
         Intent intent = new Intent(getApplicationContext(), Launcher.class);
         intent.putExtra("whoSentYou", "anonymous");
@@ -187,6 +206,10 @@ public class LogInActivity extends AppCompatActivity {
     }
 
 
+    /**
+     * Retrieve user's entered credentials
+     * @return
+     */
     private UserCredential retrieveUserCredentials() {
         String username = usernameEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
@@ -201,10 +224,10 @@ public class LogInActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        // Make sure that the loginButton hears the result from any
+        // Make sure that the twitterLoginButton hears the result from any
         // Activity that it triggered.
         facebookCallbackManager.onActivityResult(requestCode, resultCode, data);
-        loginButton.onActivityResult(requestCode, resultCode, data);
+        twitterLoginButton.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
