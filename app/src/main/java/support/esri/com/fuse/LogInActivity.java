@@ -148,6 +148,7 @@ public class LogInActivity extends AppCompatActivity {
                 };
             }
 
+
             @Override
             public void onCancel() {
                 Snackbar.make(getCurrentFocus(), "Facebook Login cancelled by user", Snackbar.LENGTH_LONG).show();
