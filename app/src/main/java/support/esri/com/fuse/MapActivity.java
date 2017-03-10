@@ -98,6 +98,7 @@ public class MapActivity extends AppCompatActivity {
      * @throws Exception
      */
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void createMaterialDrawer(Bundle savedInstanceState, Toolbar drawerToolbar, Intent localIntent) throws Exception {
         IProfile profile = null;
         Bitmap userImage = null;
@@ -124,8 +125,7 @@ public class MapActivity extends AppCompatActivity {
         }
 
         AccountHeader headerResult = new AccountHeaderBuilder().withActivity(this)
-                .withHeaderBackground(R.drawable.material_drawer_badge)
-                .withEmailTypeface(Typeface.SANS_SERIF)
+                .withHeaderBackground(R.color.cardview_dark_background)
                 .withSavedInstance(savedInstanceState)
                 .addProfiles(profile)
                 .build();
@@ -134,33 +134,35 @@ public class MapActivity extends AppCompatActivity {
         drawer = new DrawerBuilder()
                 .withActivity(this)
                 .withSavedInstance(savedInstanceState)
-                .withDrawerLayout(R.layout.drawer_layout)
+                .withSliderBackgroundColor(getResources().getColor(R.color.material_drawer_dark_background, null))
                 .withHasStableIds(true)
                 .withItemAnimator(new AlphaCrossFadeAnimator())
                 .withGenerateMiniDrawer(true)
                 .withToolbar(drawerToolbar)
                 .withAccountHeader(headerResult)
                 .addDrawerItems(
-                        new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_sign_in),
-                        new PrimaryDrawerItem().withName("Trending").withBadge("22").withTextColor(Color.BLACK).withBadgeStyle(
+                        new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_sign_in),
+                        new PrimaryDrawerItem().withName("Trending").withBadge("22").withTextColor(Color.WHITE).withBadgeStyle(
                                 new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withIcon(GoogleMaterial.Icon.gmd_trending_up),
-                        new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_mic),
-                        new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_search),
-                        new PrimaryDrawerItem().withName("Featured Content").withIdentifier(5).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_cloud_download),
-                        new SectionDrawerItem().withDivider(true).withName("Customize Map"),
-                                new ExpandableBadgeDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.BLACK).withSelectable(false)
-                                        .withSubItems(
-                                                new SecondaryDrawerItem().withName("Satellite").withLevel(2),
-                                                new SecondaryDrawerItem().withName("Navigation").withLevel(2),
-                                                new SecondaryDrawerItem().withName("Dark Gray").withLevel(2),
-                                                new SecondaryDrawerItem().withName("Streets").withLevel(2)
-                                                ).withIcon(GoogleMaterial.Icon.gmd_map)
-                        )
-
-                .addStickyDrawerItems(
-                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_settings),
-                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_comment),
-                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_account))
+                        new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_mic),
+                        new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_search),
+                        new PrimaryDrawerItem().withName("Featured Content").withIdentifier(5).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_cloud_download),
+                        new SectionDrawerItem().withDivider(true).withName("CUSTOMIZE MAP").withTextColor(Color.GRAY),
+                        new ExpandableBadgeDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.WHITE).withSelectable(false)
+                                .withSubItems(
+                                        new SecondaryDrawerItem().withName("Satellite").withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Navigation").withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Dark Gray").withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Streets").withLevel(2).withTextColor(Color.WHITE)
+                                ).withIcon(GoogleMaterial.Icon.gmd_map),
+                        new SectionDrawerItem().withDivider(true).withName("SUPPORT").withTextColor(Color.GRAY),
+                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_settings),
+                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_comment),
+                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_account))
+               /* .addStickyDrawerItems(
+                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_settings),
+                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_comment),
+                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_account))*/
                 .withShowDrawerOnFirstLaunch(false)
                 .build();
 
