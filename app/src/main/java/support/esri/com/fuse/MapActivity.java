@@ -26,6 +26,8 @@ import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
+import com.mikepenz.google_material_typeface_library.GoogleMaterial;
+import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
 import com.mikepenz.materialdrawer.AccountHeader;
 import com.mikepenz.materialdrawer.AccountHeaderBuilder;
 import com.mikepenz.materialdrawer.Drawer;
@@ -33,6 +35,7 @@ import com.mikepenz.materialdrawer.DrawerBuilder;
 import com.mikepenz.materialdrawer.MiniDrawer;
 import com.mikepenz.materialdrawer.holder.BadgeStyle;
 import com.mikepenz.materialdrawer.interfaces.ICrossfader;
+import com.mikepenz.materialdrawer.model.ExpandableBadgeDrawerItem;
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
 import com.mikepenz.materialdrawer.model.SecondaryDrawerItem;
@@ -88,6 +91,7 @@ public class MapActivity extends AppCompatActivity {
 
     /**
      * Use this this created the navigation drawer. Uses material drawer by Mike Penz
+     *
      * @param savedInstanceState
      * @param drawerToolbar
      * @param localIntent
@@ -103,19 +107,19 @@ public class MapActivity extends AppCompatActivity {
         if (whoSentYou.equalsIgnoreCase("arcgis.com")) {
             userImage = new PortalNetworkAsyncTask().execute().get();
             userFullName = fusePortal.getUser().getFullName();
-        }else if(whoSentYou.equalsIgnoreCase("Twitter")){
+        } else if (whoSentYou.equalsIgnoreCase("Twitter")) {
             String imageUrl = localIntent.getStringExtra("twitterProfileUrl");
             Log.e("URLString ", imageUrl);
             userFullName = localIntent.getStringExtra("twitterUsername");
             userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
-        }else if(whoSentYou.equalsIgnoreCase("Facebook")){
+        } else if (whoSentYou.equalsIgnoreCase("Facebook")) {
             String imageUrl = localIntent.getStringExtra("facebookProfileUrl");
             userFullName = localIntent.getStringExtra("facebookUsername");
             userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
         }
 
         //craete and populate the drawer
-        if(userFullName != null && userImage != null){
+        if (userFullName != null && userImage != null) {
             profile = new ProfileDrawerItem().withName(userFullName).withIcon(userImage);
         }
 
@@ -131,24 +135,33 @@ public class MapActivity extends AppCompatActivity {
                 .withActivity(this)
                 .withSavedInstance(savedInstanceState)
                 .withDrawerLayout(R.layout.drawer_layout)
+                .withHasStableIds(true)
+                .withItemAnimator(new AlphaCrossFadeAnimator())
                 .withGenerateMiniDrawer(true)
                 .withToolbar(drawerToolbar)
                 .withAccountHeader(headerResult)
                 .addDrawerItems(
-                        new PrimaryDrawerItem().withName("Clear Map").withIdentifier(1).withTextColor(Color.BLACK),
-                        new PrimaryDrawerItem().withName("Routes").withBadge("22").withTextColor(Color.BLACK).withBadgeStyle(
-                                new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withSelectable(true),
-                        new PrimaryDrawerItem().withName("Hospitals").withIdentifier(3).withTextColor(Color.BLACK),
-                        new PrimaryDrawerItem().withName("Bus Stops").withIdentifier(4).withTextColor(Color.BLACK),
-                        new PrimaryDrawerItem().withName("Traffic").withIdentifier(5).withTextColor(Color.BLACK),
-                        new PrimaryDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.BLACK),
+                        new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_sign_in),
+                        new PrimaryDrawerItem().withName("Trending").withBadge("22").withTextColor(Color.BLACK).withBadgeStyle(
+                                new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withIcon(GoogleMaterial.Icon.gmd_trending_up),
+                        new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_mic),
+                        new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_search),
+                        new PrimaryDrawerItem().withName("Featured Content").withIdentifier(5).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_cloud_download),
+                        new SectionDrawerItem().withDivider(true).withName("Customize Map"),
+                                new ExpandableBadgeDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.BLACK).withSelectable(false)
+                                        .withSubItems(
+                                                new SecondaryDrawerItem().withName("Satellite").withLevel(2),
+                                                new SecondaryDrawerItem().withName("Navigation").withLevel(2),
+                                                new SecondaryDrawerItem().withName("Dark Gray").withLevel(2),
+                                                new SecondaryDrawerItem().withName("Streets").withLevel(2)
+                                                ).withIcon(GoogleMaterial.Icon.gmd_map)
+                        )
 
-                        new SectionDrawerItem().withDivider(true),
-                        new SecondaryDrawerItem().withName("Settings").withIdentifier(9).withTextColor(Color.BLACK),
-                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(9).withTextColor(Color.BLACK)
-                        //new SecondaryDrawerItem().withName("About").withIcon(R.drawable.info).withIdentifier(9).withTag("Bullhorn").withTextColor(Color.BLACK)
-                )
-                .withShowDrawerOnFirstLaunch(true)
+                .addStickyDrawerItems(
+                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_settings),
+                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_comment),
+                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.BLACK).withIcon(GoogleMaterial.Icon.gmd_account))
+                .withShowDrawerOnFirstLaunch(false)
                 .build();
 
         final CrossfadeDrawerLayout crossfadeDrawerLayout = (CrossfadeDrawerLayout) drawer.getDrawerLayout();
@@ -234,14 +247,14 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
-    private class BitmapViaNetwork extends AsyncTask<URL, Void, Bitmap>{
+    private class BitmapViaNetwork extends AsyncTask<URL, Void, Bitmap> {
         @Override
         protected Bitmap doInBackground(URL... urls) {
             Bitmap bitmap = null;
             HttpURLConnection httpURLConnection = null;
             InputStream is = null;
             try {
-                httpURLConnection  = (HttpURLConnection)urls[0].openConnection();
+                httpURLConnection = (HttpURLConnection) urls[0].openConnection();
                 httpURLConnection.setDoInput(true);
                 httpURLConnection.connect();
                 is = httpURLConnection.getInputStream();
@@ -249,8 +262,8 @@ public class MapActivity extends AppCompatActivity {
                 bitmap = BitmapFactory.decodeStream(is);
             } catch (IOException e) {
                 e.printStackTrace();
-            }finally {
-                if(httpURLConnection != null && is != null){
+            } finally {
+                if (httpURLConnection != null && is != null) {
                     httpURLConnection.disconnect();
                     try {
                         is.close();

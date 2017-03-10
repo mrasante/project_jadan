@@ -142,7 +142,7 @@ public class LogInActivity extends AppCompatActivity {
                         Intent intent = new Intent(getApplicationContext(), Launcher.class);
                         intent.putExtra("whoSentYou", "Facebook");
                         intent.putExtra("FacebookUserFullName", currentProfile.getName());
-                        intent.putExtra("FacebookUserProfileURL", currentProfile.getProfilePictureUri(40, 40).toString());
+                        intent.putExtra("FacebookUserProfileURL", currentProfile.getProfilePictureUri(100, 100).toString());
                         startActivity(intent);
                     }
                 };
@@ -241,6 +241,11 @@ public class LogInActivity extends AppCompatActivity {
         @Override
         public void onPreExecute() {
             progressDialog = ProgressDialog.show(LogInActivity.this, "Signing in", "Authenticating with arcgis.com...", true);
+            try {
+                Thread.sleep(5000L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -263,11 +268,9 @@ public class LogInActivity extends AppCompatActivity {
                             credSet.add(credentials[0].getUsername());
                             credSet.add(credentials[0].getPassword());
                             sharedPreferences.edit().putStringSet("credentials", credSet);
-                            Intent intent = new Intent(getApplicationContext(), Launcher.class);
-                            intent.putExtra("whoSentYou", "arcgis.com");
-                            intent.putExtra("Credential_Log_In", "Authenticated");
-                            startActivity(intent);
-                        }
+                            arcgisLogin();
+                        }else
+                            arcgisLogin();
                     } else if (fusePortal.getLoadStatus() == LoadStatus.FAILED_TO_LOAD) {
                         Snackbar.make(getCurrentFocus(), "Login failed, Please try again.", Snackbar.LENGTH_LONG).show();
                     }
@@ -281,6 +284,13 @@ public class LogInActivity extends AppCompatActivity {
             if (progressDialog != null)
                 progressDialog.dismiss();
         }
+    }
+
+    private void arcgisLogin() {
+        Intent intent = new Intent(getApplicationContext(), Launcher.class);
+        intent.putExtra("whoSentYou", "arcgis.com");
+        intent.putExtra("Credential_Log_In", "Authenticated");
+        startActivity(intent);
     }
 
 }
