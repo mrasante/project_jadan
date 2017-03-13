@@ -61,11 +61,12 @@ public class LogInActivity extends AppCompatActivity {
     private LoginButton facebookButton;
     private CallbackManager facebookCallbackManager;
     private TwitterLoginButton twitterLoginButton;
+    static TwitterAuthConfig authConfig;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        TwitterAuthConfig authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
+         authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
         Fabric.with(this, new Twitter(authConfig));
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_log_in);
@@ -129,8 +130,7 @@ public class LogInActivity extends AppCompatActivity {
      * Requests permissions to read profile, email and user's friends list
      */
 
-    private void
-    authenticateWithFacebook() {
+    private void authenticateWithFacebook() {
         facebookButton = (LoginButton) findViewById(R.id.facebook_login_button);
         facebookButton.setReadPermissions("public_profile", "email", "user_friends");
         facebookCallbackManager = CallbackManager.Factory.create();

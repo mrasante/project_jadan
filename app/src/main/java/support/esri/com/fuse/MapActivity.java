@@ -49,6 +49,7 @@ import com.mikepenz.materialdrawer.interfaces.ICrossfader;
 import com.mikepenz.materialdrawer.model.ExpandableBadgeDrawerItem;
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
+import com.mikepenz.materialdrawer.model.ProfileSettingDrawerItem;
 import com.mikepenz.materialdrawer.model.SecondaryDrawerItem;
 import com.mikepenz.materialdrawer.model.SectionDrawerItem;
 import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
@@ -139,7 +140,17 @@ public class MapActivity extends AppCompatActivity {
         AccountHeader headerResult = new AccountHeaderBuilder().withActivity(this)
                 .withHeaderBackground(R.color.cardview_dark_background)
                 .withSavedInstance(savedInstanceState)
-                .addProfiles(profile)
+                .addProfiles(profile,
+                        new ProfileSettingDrawerItem().withName("Add Account").withIcon(GoogleMaterial.Icon.gmd_plus)
+                                .withIdentifier(1)
+                                .withTextColor(Color.WHITE)
+                                .withOnDrawerItemClickListener(new Drawer.OnDrawerItemClickListener() {
+                                    @Override
+                                    public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
+                                        AppDialogBuilder.showAccountOption(MapActivity.this);
+                                        return false;
+                                    }
+                                }))
                 .build();
 
         //create drawer
