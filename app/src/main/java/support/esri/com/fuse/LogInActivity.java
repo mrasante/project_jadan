@@ -14,6 +14,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.portal.Portal;
@@ -241,11 +242,6 @@ public class LogInActivity extends AppCompatActivity {
         @Override
         public void onPreExecute() {
             progressDialog = ProgressDialog.show(LogInActivity.this, "Signing in", "Authenticating with arcgis.com...", true);
-            try {
-                Thread.sleep(5000L);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
         }
 
         @Override
@@ -291,6 +287,19 @@ public class LogInActivity extends AppCompatActivity {
         intent.putExtra("whoSentYou", "arcgis.com");
         intent.putExtra("Credential_Log_In", "Authenticated");
         startActivity(intent);
+    }
+
+    @Override public void onResume(){
+        super.onResume();
+        String checkString = getIntent().getStringExtra("loggedOut");
+        if(checkString != null && checkString.equalsIgnoreCase("loggedOut")){
+            fusePortal = null;
+            showMessage("Signed out successfully");
+        }
+    }
+
+    private void showMessage(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
 }

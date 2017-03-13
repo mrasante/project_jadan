@@ -14,6 +14,8 @@
     <string name="sign_in">Sign In</string>
     <string name="arcgis_com_password">arcgis.com password</string>
     <string name="arcgis_com_username">arcgis.com username</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 
     <string name="skip">x</string>
 </resources>

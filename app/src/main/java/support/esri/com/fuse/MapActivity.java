@@ -1,6 +1,8 @@
 package support.esri.com.fuse;
 
 import android.Manifest;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -12,20 +14,29 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.esri.arcgisruntime.loadable.LoadStatus;
+import com.esri.arcgisruntime.loadable.LoadStatusChangedEvent;
+import com.esri.arcgisruntime.loadable.LoadStatusChangedListener;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
+import com.esri.arcgisruntime.security.CredentialChangedEvent;
+import com.esri.arcgisruntime.security.CredentialChangedListener;
+import com.esri.arcgisruntime.security.UserCredential;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
 import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
 import com.mikepenz.materialdrawer.AccountHeader;
@@ -40,6 +51,7 @@ import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
 import com.mikepenz.materialdrawer.model.SecondaryDrawerItem;
 import com.mikepenz.materialdrawer.model.SectionDrawerItem;
+import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
 import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.mikepenz.materialdrawer.util.DrawerUIUtils;
 import com.mikepenz.materialize.util.UIUtils;
@@ -135,6 +147,7 @@ public class MapActivity extends AppCompatActivity {
                 .withActivity(this)
                 .withSavedInstance(savedInstanceState)
                 .withSliderBackgroundColor(getResources().getColor(R.color.material_drawer_dark_background, null))
+                .withDrawerLayout(R.layout.drawer_layout)
                 .withHasStableIds(true)
                 .withItemAnimator(new AlphaCrossFadeAnimator())
                 .withGenerateMiniDrawer(true)
@@ -148,22 +161,52 @@ public class MapActivity extends AppCompatActivity {
                         new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_search),
                         new PrimaryDrawerItem().withName("Featured Content").withIdentifier(5).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_cloud_download),
                         new SectionDrawerItem().withDivider(true).withName("CUSTOMIZE MAP").withTextColor(Color.GRAY),
-                        new ExpandableBadgeDrawerItem().withName("Change Basemap").withIdentifier(6).withTextColor(Color.WHITE).withSelectable(false)
+                        new ExpandableBadgeDrawerItem().withName("Change Basemap").withTextColor(Color.WHITE).withSelectable(false)
                                 .withSubItems(
                                         new SecondaryDrawerItem().withName("Satellite").withLevel(2).withTextColor(Color.WHITE),
                                         new SecondaryDrawerItem().withName("Navigation").withLevel(2).withTextColor(Color.WHITE),
                                         new SecondaryDrawerItem().withName("Dark Gray").withLevel(2).withTextColor(Color.WHITE),
                                         new SecondaryDrawerItem().withName("Streets").withLevel(2).withTextColor(Color.WHITE)
                                 ).withIcon(GoogleMaterial.Icon.gmd_map),
-                        new SectionDrawerItem().withDivider(true).withName("SUPPORT").withTextColor(Color.GRAY),
-                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_settings),
-                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_comment),
-                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_account))
+                        new SectionDrawerItem().withDivider(true).withName("INFORMATION").withTextColor(Color.GRAY),
+                        new SecondaryDrawerItem().withName("Settings").withIdentifier(6).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_settings),
+                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(7).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_comment),
+                        new SecondaryDrawerItem().withName("About").withIdentifier(8).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_account))
+                .withOnDrawerItemClickListener(new Drawer.OnDrawerItemClickListener() {
+                    @Override
+                    public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
+
+                        switch ((int) drawerItem.getIdentifier()) {
+                            case 1:
+                                signoutAccount();
+                                break;
+                            case 2:
+                                obtainTrendingTopics();
+                                break;
+                            /*case 3:
+                                activateVoiceGuidance();
+                            case 4:
+                                performSearch("string");
+                            case 5:
+                                getArcGISFeaturedContent();
+                            case 6:
+                                showSettings();
+                            case 7:
+                                getFeedback();
+                            case 8:
+                                showAbout();*/
+                            default:
+                                showMessage("Functionality not yet implemented!");
+                        }
+
+                        return false;
+                    }
+                })
                /* .addStickyDrawerItems(
                         new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_settings),
                         new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_comment),
                         new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_account))*/
-                .withShowDrawerOnFirstLaunch(false)
+                .withShowDrawerOnFirstLaunch(true)
                 .build();
 
         final CrossfadeDrawerLayout crossfadeDrawerLayout = (CrossfadeDrawerLayout) drawer.getDrawerLayout();
@@ -189,6 +232,7 @@ public class MapActivity extends AppCompatActivity {
                 if (isFaded) {
                     drawer.getDrawerLayout().closeDrawer(GravityCompat.START);
                 }
+
             }
 
             @Override
@@ -196,6 +240,30 @@ public class MapActivity extends AppCompatActivity {
                 return crossfadeDrawerLayout.isCrossfaded();
             }
         });
+    }
+
+    private void obtainTrendingTopics() {
+
+
+    }
+
+    private void signoutAccount() {
+        final String whoSendYou = getIntent().getStringExtra("whoSentYou");
+        Log.e("whoSentYou", whoSendYou);
+        switch (whoSendYou) {
+
+            case "arcgis.com":
+                new LoggOutAsyncTask().onPreExecute();
+                break;
+            default:
+                showMessage("Log out attempt");
+
+        }
+    }
+
+
+    private void showMessage(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
 
@@ -277,5 +345,51 @@ public class MapActivity extends AppCompatActivity {
             return bitmap;
         }
     }
+
+    private class LoggOutAsyncTask extends AsyncTask<Void, Void, Void> {
+
+        //execute only to log out the account
+        @Override
+        protected Void doInBackground(Void... voids) {
+            fusePortal.setCredential(new UserCredential("x", "x"));
+            fusePortal.loadAsync();
+            fusePortal.addDoneLoadingListener(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(getApplicationContext(), LogInActivity.class);
+                    intent.putExtra("loggedOut", "loggedOut");
+                    startActivity(intent);
+                }
+            });
+
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+
+            AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MapActivity.this);
+            alertDialogBuilder.setMessage("Are you sure you want to sign out of selected account?")
+                    .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            doInBackground();
+                        }
+                    })
+                    .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    });
+
+            alertDialogBuilder.create();
+            alertDialogBuilder.show();
+
+        }
+
+
+    }
+
 
 }
