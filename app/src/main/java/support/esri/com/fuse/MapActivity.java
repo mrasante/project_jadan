@@ -57,14 +57,23 @@ import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.mikepenz.materialdrawer.util.DrawerUIUtils;
 import com.mikepenz.materialize.util.UIUtils;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
+import com.twitter.sdk.android.core.TwitterCore;
+import com.twitter.sdk.android.core.TwitterSession;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import retrofit2.Call;
+import retrofit2.Response;
+import support.esri.com.fuse.models.Trend;
+import support.esri.com.fuse.models.TwitterTrends;
+
 import static support.esri.com.fuse.LogInActivity.fusePortal;
+import static support.esri.com.fuse.LogInActivity.twitterSession;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -123,7 +132,6 @@ public class MapActivity extends AppCompatActivity {
             userFullName = fusePortal.getUser().getFullName();
         } else if (whoSentYou.equalsIgnoreCase("Twitter")) {
             String imageUrl = localIntent.getStringExtra("twitterProfileUrl");
-            Log.e("URLString ", imageUrl);
             userFullName = localIntent.getStringExtra("twitterUsername");
             userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
         } else if (whoSentYou.equalsIgnoreCase("Facebook")) {
@@ -153,6 +161,7 @@ public class MapActivity extends AppCompatActivity {
                                 }))
                 .build();
 
+
         //create drawer
         drawer = new DrawerBuilder()
                 .withActivity(this)
@@ -166,7 +175,7 @@ public class MapActivity extends AppCompatActivity {
                 .withAccountHeader(headerResult)
                 .addDrawerItems(
                         new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_sign_in),
-                        new PrimaryDrawerItem().withName("Trending").withBadge("22").withTextColor(Color.WHITE).withBadgeStyle(
+                        new PrimaryDrawerItem().withName("Trending").withBadge(String.valueOf(new TrendingRetriever().execute().get().intValue())).withTextColor(Color.WHITE).withBadgeStyle(
                                 new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withIcon(GoogleMaterial.Icon.gmd_trending_up),
                         new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_mic),
                         new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_search),
@@ -174,10 +183,10 @@ public class MapActivity extends AppCompatActivity {
                         new SectionDrawerItem().withDivider(true).withName("CUSTOMIZE MAP").withTextColor(Color.GRAY),
                         new ExpandableBadgeDrawerItem().withName("Change Basemap").withTextColor(Color.WHITE).withSelectable(false)
                                 .withSubItems(
-                                        new SecondaryDrawerItem().withName("Satellite").withLevel(2).withTextColor(Color.WHITE),
-                                        new SecondaryDrawerItem().withName("Navigation").withLevel(2).withTextColor(Color.WHITE),
-                                        new SecondaryDrawerItem().withName("Dark Gray").withLevel(2).withTextColor(Color.WHITE),
-                                        new SecondaryDrawerItem().withName("Streets").withLevel(2).withTextColor(Color.WHITE)
+                                        new SecondaryDrawerItem().withName("Satellite").withIdentifier(10).withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Navigation").withIdentifier(11).withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Dark Gray").withIdentifier(12).withLevel(2).withTextColor(Color.WHITE),
+                                        new SecondaryDrawerItem().withName("Streets").withIdentifier(13).withLevel(2).withTextColor(Color.WHITE)
                                 ).withIcon(GoogleMaterial.Icon.gmd_map),
                         new SectionDrawerItem().withDivider(true).withName("INFORMATION").withTextColor(Color.GRAY),
                         new SecondaryDrawerItem().withName("Settings").withIdentifier(6).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_settings),
@@ -191,14 +200,14 @@ public class MapActivity extends AppCompatActivity {
                             case 1:
                                 signoutAccount();
                                 break;
-                            case 2:
-                                obtainTrendingTopics();
+                           /* case 2:
+                                obtainTrendingTopics(twitterSession);
                                 break;
-                            /*case 3:
+                            case 3:
                                 activateVoiceGuidance();
                             case 4:
                                 performSearch("string");
-                            case 5:
+                            case 5:`
                                 getArcGISFeaturedContent();
                             case 6:
                                 showSettings();
@@ -206,10 +215,18 @@ public class MapActivity extends AppCompatActivity {
                                 getFeedback();
                             case 8:
                                 showAbout();*/
-                            default:
-                                showMessage("Functionality not yet implemented!");
                         }
+                        if(drawerItem.getIdentifier() > 9 && drawerItem.getIdentifier() < 14){
+                            final String basemapName = ((SecondaryDrawerItem)drawerItem).getName().getText();
+                            fuseMap.setBasemap(BasemapChanger.changeBasemapTo(basemapName));
+                            fuseMap.addBasemapChangedListener(new ArcGISMap.BasemapChangedListener() {
+                                @Override
+                                public void basemapChanged(ArcGISMap.BasemapChangedEvent basemapChangedEvent) {
+                                    Snackbar.make(fuseMapView, "Basemap changed to "+ fuseMap.getBasemap().getName(),Snackbar.LENGTH_LONG).show();
+                                }
+                            });
 
+                        }
                         return false;
                     }
                 })
@@ -253,9 +270,29 @@ public class MapActivity extends AppCompatActivity {
         });
     }
 
-    private void obtainTrendingTopics() {
+
+    private int obtainTrendingTopics(TwitterSession twitterSession) {
+        TwitterTrends trend = null;
+        try {
+            MyTwitterAPIClientExtender myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
+            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(1L).execute();
+            trend = trendResponse.body().get(0);
+
+        } catch (IOException ioException) {
+            Log.e("IOException ", ioException.getMessage());
+        }
+        Log.e("Return trends number ", "" + trend.getTrends().size());
+        return trend.getTrends().size();
+    }
 
 
+
+    private class TrendingRetriever extends AsyncTask<Void, Void, Integer> {
+
+        @Override
+        public Integer doInBackground(Void... voids) {
+            return Integer.valueOf(obtainTrendingTopics(twitterSession));
+        }
     }
 
     private void signoutAccount() {

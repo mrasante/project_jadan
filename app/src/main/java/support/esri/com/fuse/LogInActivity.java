@@ -34,6 +34,7 @@ import com.twitter.sdk.android.core.TwitterAuthConfig;
 import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
 import com.twitter.sdk.android.core.identity.TwitterLoginButton;
+import com.twitter.sdk.android.core.models.Search;
 import com.twitter.sdk.android.core.models.User;
 
 import java.util.HashSet;
@@ -62,6 +63,7 @@ public class LogInActivity extends AppCompatActivity {
     private CallbackManager facebookCallbackManager;
     private TwitterLoginButton twitterLoginButton;
     static TwitterAuthConfig authConfig;
+    public static  TwitterSession twitterSession;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,7 +98,7 @@ public class LogInActivity extends AppCompatActivity {
                 // The TwitterSession is also available through:
                 // Twitter.getInstance().core.getSessionManager().getActiveSession()
 
-                final TwitterSession twitterSession = result.data;
+                twitterSession = result.data;
                 final Call<User> userResult = Twitter.getApiClient(twitterSession).getAccountService().verifyCredentials(true, true);
                 userResult.enqueue(new Callback<User>() {
                     @Override
