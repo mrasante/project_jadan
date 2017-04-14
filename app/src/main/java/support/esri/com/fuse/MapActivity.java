@@ -1,20 +1,17 @@
 package support.esri.com.fuse;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v7.app.AlertDialog;
@@ -23,20 +20,24 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.esri.arcgisruntime.geometry.Envelope;
+import com.esri.arcgisruntime.geometry.GeometryEngine;
+import com.esri.arcgisruntime.geometry.Point;
+import com.esri.arcgisruntime.geometry.SpatialReference;
 import com.esri.arcgisruntime.loadable.LoadStatus;
-import com.esri.arcgisruntime.loadable.LoadStatusChangedEvent;
-import com.esri.arcgisruntime.loadable.LoadStatusChangedListener;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
-import com.esri.arcgisruntime.security.CredentialChangedEvent;
-import com.esri.arcgisruntime.security.CredentialChangedListener;
+import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
+import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
+import com.esri.arcgisruntime.mapping.view.ViewpointChangedEvent;
+import com.esri.arcgisruntime.mapping.view.ViewpointChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
+import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
 import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
 import com.mikepenz.materialdrawer.AccountHeader;
@@ -56,21 +57,22 @@ import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
 import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.mikepenz.materialdrawer.util.DrawerUIUtils;
 import com.mikepenz.materialize.util.UIUtils;
-import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
-import com.twitter.sdk.android.core.TwitterCore;
 import com.twitter.sdk.android.core.TwitterSession;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import retrofit2.Call;
 import retrofit2.Response;
-import support.esri.com.fuse.models.Trend;
+import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.TwitterTrends;
+import support.esri.com.fuse.models.YahooWOEIDService;
 
 import static support.esri.com.fuse.LogInActivity.fusePortal;
 import static support.esri.com.fuse.LogInActivity.twitterSession;
@@ -82,6 +84,11 @@ public class MapActivity extends AppCompatActivity {
     private LocationDisplay locationDisplay;
     private static Toolbar toolbar;
     private Drawer drawer;
+    private Envelope envelope;
+    private String woeid;
+    private Bundle globalInstanceState;
+    private double lat;
+    private double longi;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -97,18 +104,41 @@ public class MapActivity extends AppCompatActivity {
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
 
+
         //welcome the user
         if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
             Snackbar.make(fuseMapView, "Welcome " + fusePortal.getUser().getFullName(), Snackbar.LENGTH_LONG).show();
         }
+        globalInstanceState = savedInstanceState;
 
+        //register panning for yahoo woeid7
+        fuseMapView.addNavigationChangedListener(new NavigationChangedListener() {
+            @Override
+            public void navigationChanged(final NavigationChangedEvent navigationChangedEvent) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        retrieveTwitterWoeidOnPan(navigationChangedEvent);
+                    }
+                }).start();
+            }
+        });
+
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    @Override
+    public void onStart(){
+        super.onStart();
         //create the Drawer
         try {
-            createMaterialDrawer(savedInstanceState, toolbar, getIntent());
+            createMaterialDrawer(globalInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
 
     /**
@@ -173,9 +203,9 @@ public class MapActivity extends AppCompatActivity {
                 .withGenerateMiniDrawer(true)
                 .withToolbar(drawerToolbar)
                 .withAccountHeader(headerResult)
-                .addDrawerItems(
+                .addDrawerItems( //String.valueOf(new TrendingRetriever().execute().get().intValue())
                         new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_sign_in),
-                        new PrimaryDrawerItem().withName("Trending").withBadge(String.valueOf(new TrendingRetriever().execute().get().intValue())).withTextColor(Color.WHITE).withBadgeStyle(
+                        new PrimaryDrawerItem().withName("Trending").withBadge("50").withTextColor(Color.WHITE).withBadgeStyle(
                                 new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withIcon(GoogleMaterial.Icon.gmd_trending_up),
                         new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_mic),
                         new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_search),
@@ -200,10 +230,10 @@ public class MapActivity extends AppCompatActivity {
                             case 1:
                                 signoutAccount();
                                 break;
-                           /* case 2:
-                                obtainTrendingTopics(twitterSession);
+                            case 2:
+
                                 break;
-                            case 3:
+                            /*case 3:
                                 activateVoiceGuidance();
                             case 4:
                                 performSearch("string");
@@ -216,13 +246,13 @@ public class MapActivity extends AppCompatActivity {
                             case 8:
                                 showAbout();*/
                         }
-                        if(drawerItem.getIdentifier() > 9 && drawerItem.getIdentifier() < 14){
-                            final String basemapName = ((SecondaryDrawerItem)drawerItem).getName().getText();
+                        if (drawerItem.getIdentifier() > 9 && drawerItem.getIdentifier() < 14) {
+                            final String basemapName = ((SecondaryDrawerItem) drawerItem).getName().getText();
                             fuseMap.setBasemap(BasemapChanger.changeBasemapTo(basemapName));
                             fuseMap.addBasemapChangedListener(new ArcGISMap.BasemapChangedListener() {
                                 @Override
                                 public void basemapChanged(ArcGISMap.BasemapChangedEvent basemapChangedEvent) {
-                                    Snackbar.make(fuseMapView, "Basemap changed to "+ fuseMap.getBasemap().getName(),Snackbar.LENGTH_LONG).show();
+                                    Snackbar.make(fuseMapView, "Basemap changed to " + fuseMap.getBasemap().getName(), Snackbar.LENGTH_LONG).show();
                                 }
                             });
 
@@ -271,29 +301,50 @@ public class MapActivity extends AppCompatActivity {
     }
 
 
-    private int obtainTrendingTopics(TwitterSession twitterSession) {
+    private int obtainTrendingTopics(TwitterSession twitterSession, Long yahooWoeId) {
         TwitterTrends trend = null;
         try {
+            Log.e("Tell me OID: ", ""+yahooWoeId);
             MyTwitterAPIClientExtender myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
-            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(1L).execute();
+            Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
+            List<AvailableWoeId> availableWoeIdList = availableWoeId.body();
+            Integer yahooWoeInteger = Integer.getInteger(String.valueOf(yahooWoeId));
+            Map<Integer, Integer> woeidMap = new HashMap<>(availableWoeId.body().size());
+            for(AvailableWoeId avaWoeid : availableWoeIdList){
+                woeidMap.put(avaWoeid.getWoeid(), avaWoeid.getWoeid() - yahooWoeInteger);
+            }
+            Log.e("MapList: ", woeidMap.values().toArray().toString());
+            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(yahooWoeId).execute();
+            if(trendResponse.body() == null){
+                Log.e("KwasiTest ", "Body is null");
+                return 0;
+            }
             trend = trendResponse.body().get(0);
 
         } catch (IOException ioException) {
             Log.e("IOException ", ioException.getMessage());
         }
-        Log.e("Return trends number ", "" + trend.getTrends().size());
+        Log.e(this.getClass().getName()+ " Check trend ", "" + trend.getTrends().get(0).getName());
         return trend.getTrends().size();
     }
 
 
 
-    private class TrendingRetriever extends AsyncTask<Void, Void, Integer> {
+  /*  public class TrendingRetriever extends AsyncTask<Void, Void, Integer> {
 
         @Override
         public Integer doInBackground(Void... voids) {
-            return Integer.valueOf(obtainTrendingTopics(twitterSession));
+            if (retrieveTwitterWoeidOnPan() == null) {
+                Log.e("Testing hardcoded", "hardCoded");
+                return Integer.valueOf(obtainTrendingTopics(twitterSession, Long.decode("1")));//55988306
+
+            } else {
+                Log.e("Testing Coded", "Coded");
+                return Integer.valueOf(obtainTrendingTopics(twitterSession, Long.decode(retrieveTwitterWoeidOnPan())));
+            }
         }
-    }
+
+    }*/
 
     private void signoutAccount() {
         final String whoSendYou = getIntent().getStringExtra("whoSentYou");
@@ -323,7 +374,7 @@ public class MapActivity extends AppCompatActivity {
             locationDisplay = fuseMapView.getLocationDisplay();
             locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
             locationDisplay.startAsync();
-            if (locationDisplay.isStarted()) {
+            if (locationDisplay.isStarted() && locationDisplay.getLocation().getPosition() != null) {
                 fuseMap.setInitialViewpoint(new Viewpoint(locationDisplay.getLocation().getPosition(), 7));
                 granted = true;
             }
@@ -439,5 +490,34 @@ public class MapActivity extends AppCompatActivity {
 
     }
 
+
+    private String retrieveTwitterWoeidOnPan(NavigationChangedEvent navChangeEvent) {
+        Log.e("Threading....", "Entering thread");
+        try {
+            boolean isNavigating = navChangeEvent.isNavigating() ? true : false;
+
+            if (!isNavigating) {
+                Point point = new Point(fuseMapView.getVisibleArea().getExtent().getCenter().getX(),
+                        fuseMapView.getVisibleArea().getExtent().getCenter().getY(), fuseMap.getSpatialReference());
+               Point projectedPoint = (Point)GeometryEngine.project(point, SpatialReference.create(4326));
+                lat = projectedPoint.getX();
+                longi = projectedPoint.getY();
+                Log.e("Are we Naving: ", isNavigating+" " + longi);
+            } else
+                return null;
+            Double[] coords = {lat, longi};
+            String woeidString = new YahooWOEIDService().execute(coords).get();
+            Log.e("Using WoeID: ", woeidString);
+
+            Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
+            obtainTrendingTopics(twitterSession, woeidVal);
+        }catch (ExecutionException | InterruptedException ioe){
+        Log.e(this.getClass().getName()+" Longi ", ioe.getMessage());
+    }
+            String value = woeid != null ? woeid : null;
+
+            return value;
+
+    }
 
 }

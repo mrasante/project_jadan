@@ -54,6 +54,7 @@ dependencies {
     compile 'com.squareup.retrofit2:retrofit:2.0.2'
     compile 'com.mikepenz:iconics-core:2.8.0@aar'
     compile 'com.mikepenz:fontawesome-typeface:4.6.0.3@aar'
+    compile 'org.jsoup:jsoup:1.10.2'
 //    compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.8.7'
     testCompile 'junit:junit:4.12'
 
@@ -64,4 +65,10 @@ dependencies {
         transitive = true;
     }
 
+    androidTestCompile 'com.android.support.test.espresso:espresso-contrib:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+        exclude group: 'com.android.support', module: 'support-v4'
+        exclude group: 'com.android.support', module: 'design'
+        exclude group: 'com.android.support', module: 'recyclerview-v7'
+    }
 }

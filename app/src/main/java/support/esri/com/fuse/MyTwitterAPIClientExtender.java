@@ -10,6 +10,7 @@ import io.fabric.sdk.android.Fabric;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
+import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.TwitterTrends;
 
 /**
@@ -30,5 +31,9 @@ public class MyTwitterAPIClientExtender extends TwitterApiClient {
     public interface CustomTwitterService{
         @GET("/1.1/trends/place.json")
         Call<List<TwitterTrends>> show(@Query("id") long id);
+
+        @GET("/1.1/trends/available.json")
+        Call<List<AvailableWoeId>> getAvailableWoeid();
     }
+
 }
