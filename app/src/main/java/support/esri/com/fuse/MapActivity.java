@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
@@ -34,8 +35,6 @@ import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
-import com.esri.arcgisruntime.mapping.view.ViewpointChangedEvent;
-import com.esri.arcgisruntime.mapping.view.ViewpointChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
@@ -61,15 +60,15 @@ import com.twitter.sdk.android.core.TwitterSession;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Response;
+import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.TwitterTrends;
 import support.esri.com.fuse.models.YahooWOEIDService;
@@ -260,10 +259,6 @@ public class MapActivity extends AppCompatActivity {
                         return false;
                     }
                 })
-               /* .addStickyDrawerItems(
-                        new SecondaryDrawerItem().withName("Settings").withIdentifier(7).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_settings),
-                        new SecondaryDrawerItem().withName("Feedback").withIdentifier(8).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_comment),
-                        new SecondaryDrawerItem().withName("About").withIdentifier(9).withTextColor(Color.GREEN).withIcon(GoogleMaterial.Icon.gmd_account))*/
                 .withShowDrawerOnFirstLaunch(true)
                 .build();
 
@@ -301,23 +296,42 @@ public class MapActivity extends AppCompatActivity {
     }
 
 
-    private int obtainTrendingTopics(TwitterSession twitterSession, Long yahooWoeId) {
+    public Integer getKeyFromValue(TreeMap<Integer, Integer> map, Integer val){
+        for(Integer value : map.keySet()){
+            if(map.get(value) == val){
+                return value;
+            }
+        }
+        return Integer.valueOf("1");
+    }
+
+    private Integer getAppRateLimit(AppRateLimit appRateLimit){
+        return appRateLimit.getResources().getSearch().getSearchTweets().getLimit();
+    }
+
+
+
+    private void obtainTrendingTopics(TwitterSession twitterSession, Long yahooWoeId) {
         TwitterTrends trend = null;
         try {
-            Log.e("Tell me OID: ", ""+yahooWoeId);
             MyTwitterAPIClientExtender myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
-            Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
-            List<AvailableWoeId> availableWoeIdList = availableWoeId.body();
-            Integer yahooWoeInteger = Integer.getInteger(String.valueOf(yahooWoeId));
-            Map<Integer, Integer> woeidMap = new HashMap<>(availableWoeId.body().size());
-            for(AvailableWoeId avaWoeid : availableWoeIdList){
-                woeidMap.put(avaWoeid.getWoeid(), avaWoeid.getWoeid() - yahooWoeInteger);
+            Integer rateLimit = getAppRateLimit(myTwitterApiClient.getCustomTwitterService().getRateLimit().execute().body());
+
+            if(rateLimit < 0){
+                Log.e("RateLimit ", "Rate limit has been reached!!");
+                return;
             }
-            Log.e("MapList: ", woeidMap.values().toArray().toString());
-            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(yahooWoeId).execute();
+
+            TreeMap<Integer, Integer> woeidMap = getIntegerTreeMap(yahooWoeId, myTwitterApiClient);
+            if (woeidMap == null) return;
+
+            Integer matchedKey = getKeyFromValue(woeidMap, Collections.min(woeidMap.values()));
+            Log.e("Smallest Value: ", ""+Collections.min(woeidMap.values()));
+            Long idToUse = Long.valueOf(matchedKey);
+            Log.e("Im using ID: ", ""+idToUse);
+            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(idToUse).execute();
             if(trendResponse.body() == null){
-                Log.e("KwasiTest ", "Body is null");
-                return 0;
+                return;
             }
             trend = trendResponse.body().get(0);
 
@@ -325,26 +339,27 @@ public class MapActivity extends AppCompatActivity {
             Log.e("IOException ", ioException.getMessage());
         }
         Log.e(this.getClass().getName()+ " Check trend ", "" + trend.getTrends().get(0).getName());
-        return trend.getTrends().size();
     }
 
-
-
-  /*  public class TrendingRetriever extends AsyncTask<Void, Void, Integer> {
-
-        @Override
-        public Integer doInBackground(Void... voids) {
-            if (retrieveTwitterWoeidOnPan() == null) {
-                Log.e("Testing hardcoded", "hardCoded");
-                return Integer.valueOf(obtainTrendingTopics(twitterSession, Long.decode("1")));//55988306
-
-            } else {
-                Log.e("Testing Coded", "Coded");
-                return Integer.valueOf(obtainTrendingTopics(twitterSession, Long.decode(retrieveTwitterWoeidOnPan())));
-            }
+    @Nullable
+    private TreeMap<Integer, Integer> getIntegerTreeMap(Long yahooWoeId, MyTwitterAPIClientExtender myTwitterApiClient) throws IOException {
+        Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
+        List<AvailableWoeId> availableWoeIdList = availableWoeId.body();
+        if(availableWoeIdList == null){
+            return null;
         }
 
-    }*/
+
+        Integer yahooWoeInteger = Integer.parseInt(String.valueOf(yahooWoeId));
+        TreeMap<Integer, Integer> woeidMap = new TreeMap<>();
+        for(AvailableWoeId avaWoeid : availableWoeIdList){
+            if(avaWoeid.getWoeid() != 1){
+                woeidMap.put(avaWoeid.getWoeid(), avaWoeid.getWoeid() - yahooWoeInteger);
+            }
+        }
+        return woeidMap;
+    }
+
 
     private void signoutAccount() {
         final String whoSendYou = getIntent().getStringExtra("whoSentYou");
@@ -508,7 +523,9 @@ public class MapActivity extends AppCompatActivity {
             Double[] coords = {lat, longi};
             String woeidString = new YahooWOEIDService().execute(coords).get();
             Log.e("Using WoeID: ", woeidString);
-
+            if(woeidString.length() == 0){
+                return "55988306";
+            }
             Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
             obtainTrendingTopics(twitterSession, woeidVal);
         }catch (ExecutionException | InterruptedException ioe){

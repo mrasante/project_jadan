@@ -33,7 +33,6 @@ public class YahooWOEIDService extends AsyncTask<Double, Void, String>{
             }
 //            String YAHOO_API_URL = "https://query.yahooapis.com/v1/public/yql?q=select woeid from geo.places where text=("+Longitude+","+Latitude+")";
             String YAHOO_API_URL = "https://query.yahooapis.com/v1/public/yql?q=select woeid from geo.places where text=\"(" + Longitude +"," +Latitude +")\" limit 1&diagnostics=false";
-            Log.e("REST Req: ", YAHOO_API_URL);
             Document document = Jsoup.connect(YAHOO_API_URL).timeout(10 * 1000).ignoreHttpErrors(true).ignoreContentType(true).get();
             Log.e("WOEIDExcpetion ", "Connected");
             Document doc = Jsoup.parse(document.html(), "", Parser.xmlParser());
