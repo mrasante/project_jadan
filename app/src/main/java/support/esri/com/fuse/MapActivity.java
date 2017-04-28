@@ -341,6 +341,8 @@ public class MapActivity extends AppCompatActivity {
         Log.e(this.getClass().getName()+ " Check trend ", "" + trend.getTrends().get(0).getName());
     }
 
+
+
     @Nullable
     private TreeMap<Integer, Integer> getIntegerTreeMap(Long yahooWoeId, MyTwitterAPIClientExtender myTwitterApiClient) throws IOException {
         Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
@@ -354,7 +356,7 @@ public class MapActivity extends AppCompatActivity {
         TreeMap<Integer, Integer> woeidMap = new TreeMap<>();
         for(AvailableWoeId avaWoeid : availableWoeIdList){
             if(avaWoeid.getWoeid() != 1){
-                woeidMap.put(avaWoeid.getWoeid(), avaWoeid.getWoeid() - yahooWoeInteger);
+                woeidMap.put(avaWoeid.getWoeid(), Math.abs(avaWoeid.getWoeid() - yahooWoeInteger));
             }
         }
         return woeidMap;
