@@ -12,11 +12,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
@@ -31,12 +34,14 @@ import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
+import com.esri.arcgisruntime.mapping.view.Camera;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
+import com.mikepenz.fastadapter.commons.adapters.FastItemAdapter;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
 import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
 import com.mikepenz.materialdrawer.AccountHeader;
@@ -62,6 +67,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.TreeMap;
@@ -70,6 +76,8 @@ import java.util.concurrent.ExecutionException;
 import retrofit2.Response;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
+import support.esri.com.fuse.models.FastAdapterItemImpl;
+import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
 import support.esri.com.fuse.models.YahooWOEIDService;
 
@@ -88,6 +96,12 @@ public class MapActivity extends AppCompatActivity {
     private Bundle globalInstanceState;
     private double lat;
     private double longi;
+    private TwitterTrends trend;
+    private List<Trend> trendList;
+    private FuseBottomSheetDialog fuseBottomSheetDialog;
+    private FloatingActionButton fabIcon;
+    private NavigationChangedListener navigationChangedListener;
+    private Viewpoint viewPoint;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -99,7 +113,7 @@ public class MapActivity extends AppCompatActivity {
 
         //create and add the map with basemap
         fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
-        fuseMap = new ArcGISMap(Basemap.createStreetsNightVector());
+        fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
 
@@ -110,34 +124,48 @@ public class MapActivity extends AppCompatActivity {
         }
         globalInstanceState = savedInstanceState;
 
-        //register panning for yahoo woeid7
-        fuseMapView.addNavigationChangedListener(new NavigationChangedListener() {
-            @Override
-            public void navigationChanged(final NavigationChangedEvent navigationChangedEvent) {
-                new Thread(new Runnable() {
+        //create a nav changed listener and add the logic
+        navigationChangedListener =
+                new NavigationChangedListener() {
                     @Override
-                    public void run() {
-                        retrieveTwitterWoeidOnPan(navigationChangedEvent);
+                    public void navigationChanged(final NavigationChangedEvent navigationChangedEvent) {
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                retrieveTwitterWoeidOnPan(navigationChangedEvent);
+                            }
+                        }).start();
                     }
-                }).start();
-            }
-        });
-
+                };
     }
 
 
+
+    private double[] getCoordsArray(Envelope extent){
+       return new double[]{extent.getXMin(), extent.getYMin(), extent.getXMax(), extent.getYMax()};
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
-    public void onStart(){
+    public void onStart() {
         super.onStart();
-        //create the Drawer
+        fabIcon = (FloatingActionButton) findViewById(R.id.fab);
+        fabIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //fuseMapView.setViewpointAsync(new Viewpoint(locationDisplay.getLocation().getPosition(), 20000));
+                Envelope current = fuseMapView.getCurrentViewpoint(Viewpoint.Type.BOUNDING_GEOMETRY).getTargetGeometry().getExtent();
+
+                Viewpoint viewPoint = new Viewpoint(current);
+                fuseMap.setInitialViewpoint(viewPoint);
+            }
+        });
         try {
             createMaterialDrawer(globalInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
 
 
     /**
@@ -154,6 +182,7 @@ public class MapActivity extends AppCompatActivity {
         IProfile profile = null;
         Bitmap userImage = null;
         String userFullName = null;
+
         //retrieve who sent you extra from intent.
         String whoSentYou = getIntent().getStringExtra("whoSentYou");
         if (whoSentYou.equalsIgnoreCase("arcgis.com")) {
@@ -204,7 +233,7 @@ public class MapActivity extends AppCompatActivity {
                 .withAccountHeader(headerResult)
                 .addDrawerItems( //String.valueOf(new TrendingRetriever().execute().get().intValue())
                         new PrimaryDrawerItem().withName("Sign Out").withIdentifier(1).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_sign_in),
-                        new PrimaryDrawerItem().withName("Trending").withBadge("50").withTextColor(Color.WHITE).withBadgeStyle(
+                        new PrimaryDrawerItem().withName("Toggle Trending").withTextColor(Color.WHITE).withBadgeStyle(
                                 new BadgeStyle(Color.GREEN, Color.blue(20))).withIdentifier(2).withIcon(GoogleMaterial.Icon.gmd_trending_up),
                         new PrimaryDrawerItem().withName("Voice").withIdentifier(3).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_mic),
                         new PrimaryDrawerItem().withName("Search").withIdentifier(4).withTextColor(Color.WHITE).withIcon(GoogleMaterial.Icon.gmd_search),
@@ -230,7 +259,7 @@ public class MapActivity extends AppCompatActivity {
                                 signoutAccount();
                                 break;
                             case 2:
-
+                                toggleTrending();
                                 break;
                             /*case 3:
                                 activateVoiceGuidance();
@@ -295,29 +324,42 @@ public class MapActivity extends AppCompatActivity {
         });
     }
 
+    private boolean toggleTrending() {
+        boolean trending = false;
 
-    public Integer getKeyFromValue(TreeMap<Integer, Integer> map, Integer val){
-        for(Integer value : map.keySet()){
-            if(map.get(value) == val){
+        if (fuseBottomSheetDialog != null && fuseBottomSheetDialog.isShowing()) {
+            fuseMapView.removeNavigationChangedListener(navigationChangedListener);
+            return trending;
+        } else if(fuseBottomSheetDialog != null && !fuseBottomSheetDialog.isShowing())
+            fuseMapView.addNavigationChangedListener(navigationChangedListener);
+        trending = true;
+
+        return trending;
+    }
+
+
+    public Integer getKeyFromValue(TreeMap<Integer, Integer> map, Integer val) {
+        for (Integer value : map.keySet()) {
+            if (map.get(value) == val) {
                 return value;
             }
         }
         return Integer.valueOf("1");
     }
 
-    private Integer getAppRateLimit(AppRateLimit appRateLimit){
+
+    private Integer getAppRateLimit(AppRateLimit appRateLimit) {
         return appRateLimit.getResources().getSearch().getSearchTweets().getLimit();
     }
 
 
-
     private void obtainTrendingTopics(TwitterSession twitterSession, Long yahooWoeId) {
-        TwitterTrends trend = null;
+
         try {
             MyTwitterAPIClientExtender myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
             Integer rateLimit = getAppRateLimit(myTwitterApiClient.getCustomTwitterService().getRateLimit().execute().body());
 
-            if(rateLimit < 0){
+            if (rateLimit < 0) {
                 Log.e("RateLimit ", "Rate limit has been reached!!");
                 return;
             }
@@ -326,36 +368,74 @@ public class MapActivity extends AppCompatActivity {
             if (woeidMap == null) return;
 
             Integer matchedKey = getKeyFromValue(woeidMap, Collections.min(woeidMap.values()));
-            Log.e("Smallest Value: ", ""+Collections.min(woeidMap.values()));
             Long idToUse = Long.valueOf(matchedKey);
-            Log.e("Im using ID: ", ""+idToUse);
             Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(idToUse).execute();
-            if(trendResponse.body() == null){
+            if (trendResponse.body() == null) {
                 return;
             }
             trend = trendResponse.body().get(0);
+            trendList = trend.getTrends();
 
         } catch (IOException ioException) {
             Log.e("IOException ", ioException.getMessage());
         }
-        Log.e(this.getClass().getName()+ " Check trend ", "" + trend.getTrends().get(0).getName());
+
+        showTrendingUI();
     }
 
+
+    /**
+     * Use this method to show the results of the trending query on the UI
+     */
+
+    private void showTrendingUI() {
+        if (fuseBottomSheetDialog != null && fuseBottomSheetDialog.isShowing()) {
+            return;
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                fuseBottomSheetDialog = new FuseBottomSheetDialog(MapActivity.this);
+                RecyclerView recyclerView = (RecyclerView) fuseBottomSheetDialog.inflatedView.findViewById(R.id.fuse_recycler_sheet);
+                FastItemAdapter<FastAdapterItemImpl> fastItemAdapter = new FastItemAdapter<>();
+
+                List<FastAdapterItemImpl> fastAdapterItemList = new ArrayList<>();
+
+                for (Trend trend : trendList) {
+
+                    if (fastAdapterItemList.size() <= 4) {
+                        FastAdapterItemImpl fastAdapterItem = new FastAdapterItemImpl();
+                        fastAdapterItem.name = trend.getName();
+                        Log.e("Number: ", "Volume = " + trend.getTweetVolume());
+                        fastAdapterItemList.add(fastAdapterItem);
+                    } else
+                        break;
+
+                }
+
+                fastItemAdapter.add(fastAdapterItemList);
+                recyclerView.setAdapter(fastItemAdapter);
+                LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MapActivity.this);
+                recyclerView.setLayoutManager(linearLayoutManager);
+                fuseBottomSheetDialog.show();
+            }
+        });
+    }
 
 
     @Nullable
     private TreeMap<Integer, Integer> getIntegerTreeMap(Long yahooWoeId, MyTwitterAPIClientExtender myTwitterApiClient) throws IOException {
         Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
         List<AvailableWoeId> availableWoeIdList = availableWoeId.body();
-        if(availableWoeIdList == null){
+        if (availableWoeIdList == null) {
             return null;
         }
 
 
         Integer yahooWoeInteger = Integer.parseInt(String.valueOf(yahooWoeId));
         TreeMap<Integer, Integer> woeidMap = new TreeMap<>();
-        for(AvailableWoeId avaWoeid : availableWoeIdList){
-            if(avaWoeid.getWoeid() != 1){
+        for (AvailableWoeId avaWoeid : availableWoeIdList) {
+            if (avaWoeid.getWoeid() != 1) {
                 woeidMap.put(avaWoeid.getWoeid(), Math.abs(avaWoeid.getWoeid() - yahooWoeInteger));
             }
         }
@@ -516,26 +596,26 @@ public class MapActivity extends AppCompatActivity {
             if (!isNavigating) {
                 Point point = new Point(fuseMapView.getVisibleArea().getExtent().getCenter().getX(),
                         fuseMapView.getVisibleArea().getExtent().getCenter().getY(), fuseMap.getSpatialReference());
-               Point projectedPoint = (Point)GeometryEngine.project(point, SpatialReference.create(4326));
+                Point projectedPoint = (Point) GeometryEngine.project(point, SpatialReference.create(4326));
                 lat = projectedPoint.getX();
                 longi = projectedPoint.getY();
-                Log.e("Are we Naving: ", isNavigating+" " + longi);
+                Log.e("Are we Naving: ", isNavigating + " " + longi);
             } else
                 return null;
             Double[] coords = {lat, longi};
             String woeidString = new YahooWOEIDService().execute(coords).get();
             Log.e("Using WoeID: ", woeidString);
-            if(woeidString.length() == 0){
+            if (woeidString.length() == 0) {
                 return "55988306";
             }
             Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
             obtainTrendingTopics(twitterSession, woeidVal);
-        }catch (ExecutionException | InterruptedException ioe){
-        Log.e(this.getClass().getName()+" Longi ", ioe.getMessage());
-    }
-            String value = woeid != null ? woeid : null;
+        } catch (ExecutionException | InterruptedException ioe) {
+            Log.e(this.getClass().getName() + " Longi ", ioe.getMessage());
+        }
+        String value = woeid != null ? woeid : null;
 
-            return value;
+        return value;
 
     }
 

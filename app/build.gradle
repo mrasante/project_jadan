@@ -55,7 +55,6 @@ dependencies {
     compile 'com.mikepenz:iconics-core:2.8.0@aar'
     compile 'com.mikepenz:fontawesome-typeface:4.6.0.3@aar'
     compile 'org.jsoup:jsoup:1.10.2'
-//    compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.8.7'
     testCompile 'junit:junit:4.12'
 
     compile('com.mikepenz:materialdrawer:5.8.2@aar') {
@@ -65,6 +64,14 @@ dependencies {
         transitive = true;
     }
 
+    /*  compile('com.mikepenz:fastadapter:2.5.2@aar') {
+           transitive = true
+     }
+    /*
+     '
+compile 'com.mikepenz:fastadapter-extensions:2.5.2@aar'
+       compile 'com.mikepenz:materialize:1.0.1@aar'*/
+    compile 'com.mikepenz:fastadapter-commons:2.5.2@aar'
     androidTestCompile 'com.android.support.test.espresso:espresso-contrib:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
         exclude group: 'com.android.support', module: 'support-v4'

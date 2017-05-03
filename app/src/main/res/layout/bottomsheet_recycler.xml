@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fuse_bottom_sheet_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/tw__transparent"
+    android:orientation="vertical"
+    android:padding="2dp">
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/fuse_recycler_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorPrimary">
+
+    </android.support.v7.widget.RecyclerView>
+
+</LinearLayout>

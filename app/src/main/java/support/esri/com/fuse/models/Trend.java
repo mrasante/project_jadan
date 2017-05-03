@@ -8,7 +8,7 @@ public class Trend {
     private String url;
     private Object promotedContent;
     private String query;
-    private Object tweetVolume;
+    private Integer tweetVolume;
 
     public String getName() {
         return name;
@@ -42,11 +42,11 @@ public class Trend {
         this.query = query;
     }
 
-    public Object getTweetVolume() {
+    public Integer getTweetVolume() {
         return tweetVolume;
     }
 
-    public void setTweetVolume(Object tweetVolume) {
+    public void setTweetVolume(Integer tweetVolume) {
         this.tweetVolume = tweetVolume;
     }
 

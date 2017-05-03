@@ -18,4 +18,6 @@
     <string name="no">No</string>
 
     <string name="skip">x</string>
+    <string name="name">name</string>
+    <string name="description">description</string>
 </resources>
