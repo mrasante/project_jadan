@@ -102,6 +102,7 @@ public class MapActivity extends AppCompatActivity {
     private FloatingActionButton fabIcon;
     private NavigationChangedListener navigationChangedListener;
     private Viewpoint viewPoint;
+    private boolean trending;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -137,6 +138,8 @@ public class MapActivity extends AppCompatActivity {
                         }).start();
                     }
                 };
+
+
     }
 
 
@@ -325,14 +328,14 @@ public class MapActivity extends AppCompatActivity {
     }
 
     private boolean toggleTrending() {
-        boolean trending = false;
-
-        if (fuseBottomSheetDialog != null && fuseBottomSheetDialog.isShowing()) {
+        if (trending) {
             fuseMapView.removeNavigationChangedListener(navigationChangedListener);
+            trending = false;
             return trending;
-        } else if(fuseBottomSheetDialog != null && !fuseBottomSheetDialog.isShowing())
+        } else {
             fuseMapView.addNavigationChangedListener(navigationChangedListener);
-        trending = true;
+            trending = true;
+        }
 
         return trending;
     }

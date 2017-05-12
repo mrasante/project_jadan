@@ -15,10 +15,11 @@
         android:layout_row="0"
         android:background="@android:color/transparent"
         android:fontFamily="sans-serif"
+        android:padding="10dp"
         android:text="@string/name"
         android:textAlignment="center"
         android:textColor="@android:color/white"
-        android:textSize="14sp" />
+        android:textSize="18sp" />
 
 
 </GridLayout>
