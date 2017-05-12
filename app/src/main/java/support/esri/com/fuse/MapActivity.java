@@ -24,6 +24,7 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 import com.esri.arcgisruntime.geometry.Envelope;
@@ -34,12 +35,14 @@ import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.Viewpoint;
-import com.esri.arcgisruntime.mapping.view.Camera;
+import com.esri.arcgisruntime.mapping.view.Graphic;
+import com.esri.arcgisruntime.mapping.view.GraphicsOverlay;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
+import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 import com.mikepenz.fastadapter.commons.adapters.FastItemAdapter;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
@@ -103,6 +106,7 @@ public class MapActivity extends AppCompatActivity {
     private NavigationChangedListener navigationChangedListener;
     private Viewpoint viewPoint;
     private boolean trending;
+    private SeekBar seekBar;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -117,7 +121,7 @@ public class MapActivity extends AppCompatActivity {
         fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
-
+        wiredSeekBarZoom();
 
         //welcome the user
         if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
@@ -139,35 +143,54 @@ public class MapActivity extends AppCompatActivity {
                     }
                 };
 
+        fabIcon = (FloatingActionButton) findViewById(R.id.fab);
+        fabIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Envelope current = fuseMapView.getCurrentViewpoint(Viewpoint.Type.BOUNDING_GEOMETRY).getTargetGeometry().getExtent();
+                Viewpoint viewPoint = new Viewpoint(current);
+                fuseMap.setInitialViewpoint(viewPoint);
+            }
+        });
+
 
     }
 
 
-
-    private double[] getCoordsArray(Envelope extent){
-       return new double[]{extent.getXMin(), extent.getYMin(), extent.getXMax(), extent.getYMax()};
+    private double[] getCoordsArray(Envelope extent) {
+        return new double[]{extent.getXMin(), extent.getYMin(), extent.getXMax(), extent.getYMax()};
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onStart() {
         super.onStart();
-        fabIcon = (FloatingActionButton) findViewById(R.id.fab);
-        fabIcon.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //fuseMapView.setViewpointAsync(new Viewpoint(locationDisplay.getLocation().getPosition(), 20000));
-                Envelope current = fuseMapView.getCurrentViewpoint(Viewpoint.Type.BOUNDING_GEOMETRY).getTargetGeometry().getExtent();
-
-                Viewpoint viewPoint = new Viewpoint(current);
-                fuseMap.setInitialViewpoint(viewPoint);
-            }
-        });
         try {
             createMaterialDrawer(globalInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void wiredSeekBarZoom() {
+        //wire the seekbar
+        seekBar = (SeekBar) findViewById(R.id.seekBar);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                fuseMapView.setViewpointScaleAsync(progress * 10000);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
     }
 
 
@@ -409,7 +432,6 @@ public class MapActivity extends AppCompatActivity {
                     if (fastAdapterItemList.size() <= 4) {
                         FastAdapterItemImpl fastAdapterItem = new FastAdapterItemImpl();
                         fastAdapterItem.name = trend.getName();
-                        Log.e("Number: ", "Volume = " + trend.getTweetVolume());
                         fastAdapterItemList.add(fastAdapterItem);
                     } else
                         break;
@@ -425,6 +447,30 @@ public class MapActivity extends AppCompatActivity {
         });
     }
 
+
+    private void plotPoints(List<Point> pointList){
+        GraphicsOverlay graphicsOverlay = new GraphicsOverlay(GraphicsOverlay.RenderingMode.DYNAMIC);
+        Graphic graphic = null;
+        SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.CIRCLE, 205, 8);
+
+        for(Point plotPoint : pointList){
+            graphic = new Graphic(plotPoint);
+            graphic.setSymbol(simpleMarkerSymbol);
+            graphicsOverlay.getGraphics().add(graphic);
+        }
+       fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
+
+    }
+
+
+    /**
+     * Builds a treemap of twitter's available WoeID values to which to compare returned values
+     * from service querry
+     * @param yahooWoeId
+     * @param myTwitterApiClient
+     * @return
+     * @throws IOException
+     */
 
     @Nullable
     private TreeMap<Integer, Integer> getIntegerTreeMap(Long yahooWoeId, MyTwitterAPIClientExtender myTwitterApiClient) throws IOException {
@@ -592,7 +638,6 @@ public class MapActivity extends AppCompatActivity {
 
 
     private String retrieveTwitterWoeidOnPan(NavigationChangedEvent navChangeEvent) {
-        Log.e("Threading....", "Entering thread");
         try {
             boolean isNavigating = navChangeEvent.isNavigating() ? true : false;
 
@@ -602,12 +647,10 @@ public class MapActivity extends AppCompatActivity {
                 Point projectedPoint = (Point) GeometryEngine.project(point, SpatialReference.create(4326));
                 lat = projectedPoint.getX();
                 longi = projectedPoint.getY();
-                Log.e("Are we Naving: ", isNavigating + " " + longi);
             } else
                 return null;
             Double[] coords = {lat, longi};
             String woeidString = new YahooWOEIDService().execute(coords).get();
-            Log.e("Using WoeID: ", woeidString);
             if (woeidString.length() == 0) {
                 return "55988306";
             }
