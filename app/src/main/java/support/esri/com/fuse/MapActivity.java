@@ -148,8 +148,7 @@ public class MapActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Envelope current = fuseMapView.getCurrentViewpoint(Viewpoint.Type.BOUNDING_GEOMETRY).getTargetGeometry().getExtent();
-                Viewpoint viewPoint = new Viewpoint(current);
-                fuseMap.setInitialViewpoint(viewPoint);
+                panToCurrentLocation();
             }
         });
 
@@ -509,9 +508,7 @@ public class MapActivity extends AppCompatActivity {
         boolean granted = false;
         if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED) {
-            locationDisplay = fuseMapView.getLocationDisplay();
-            locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-            locationDisplay.startAsync();
+            panToCurrentLocation();
             if (locationDisplay.isStarted() && locationDisplay.getLocation().getPosition() != null) {
                 fuseMap.setInitialViewpoint(new Viewpoint(locationDisplay.getLocation().getPosition(), 7));
                 granted = true;
@@ -527,12 +524,17 @@ public class MapActivity extends AppCompatActivity {
     }
 
 
+    private void panToCurrentLocation() {
+        locationDisplay = fuseMapView.getLocationDisplay();
+        locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
+        locationDisplay.startAsync();
+    }
+
+
     @Override
     public void onRequestPermissionsResult(int value, String[] permArray, int[] grantedPerms) {
         if (grantedPerms[0] == PackageManager.PERMISSION_GRANTED) {
-            locationDisplay = fuseMapView.getLocationDisplay();
-            locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
-            locationDisplay.startAsync();
+            panToCurrentLocation();
         }
 
     }
