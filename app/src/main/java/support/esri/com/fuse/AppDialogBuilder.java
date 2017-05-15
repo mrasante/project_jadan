@@ -13,13 +13,13 @@ import android.widget.Toast;
 
 public class AppDialogBuilder {
 
-    public AppDialogBuilder(){
+    public AppDialogBuilder() {
 
     }
 
-    public static AlertDialog.Builder showAccountOption(final Context context){
+    public static AlertDialog.Builder showAccountOption(final Context context) {
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context)
-                .setAdapter(new ArrayAdapter<String>(context, R.layout.adapter_res_layout_file, R.id.adapter_text,new String[]{"Facebook", "Twitter", "ArcGIS Online"}),
+                .setAdapter(new ArrayAdapter<String>(context, R.layout.adapter_res_layout_file, R.id.adapter_text, new String[]{"Facebook", "Twitter", "ArcGIS Online"}),
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {

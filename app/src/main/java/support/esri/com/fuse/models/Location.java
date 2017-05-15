@@ -1,4 +1,3 @@
-
 package support.esri.com.fuse.models;
 
 

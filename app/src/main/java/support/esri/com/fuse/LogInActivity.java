@@ -49,26 +49,26 @@ public class LogInActivity extends AppCompatActivity {
     // Note: Your consumer key and secret should be obfuscated in your source code before shipping.
 
 
-    private CheckBox rememberMeChkBox;
     private static final String PREFERENCES = "REMEMBER ME";
+    public static Portal fusePortal;
+    public static boolean loggedIn;
+    public static TwitterSession twitterSession;
+    static TwitterAuthConfig authConfig;
+    private CheckBox rememberMeChkBox;
     private SharedPreferences sharedPreferences;
     private EditText usernameEditText;
     private EditText passwordEditText;
-    public static Portal fusePortal;
-    public static boolean loggedIn;
     private boolean isChecked;
     private Button signInButton;
     private ProgressDialog progressDialog;
     private LoginButton facebookButton;
     private CallbackManager facebookCallbackManager;
     private TwitterLoginButton twitterLoginButton;
-    static TwitterAuthConfig authConfig;
-    public static  TwitterSession twitterSession;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-         authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
+        authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
         Fabric.with(this, new Twitter(authConfig));
         FacebookSdk.sdkInitialize(getApplicationContext());
         setContentView(R.layout.activity_log_in);
@@ -200,7 +200,6 @@ public class LogInActivity extends AppCompatActivity {
 
     /**
      * Use this for anonymous log in.
-     *
      */
     private void startLauncherActivity() {
         Intent intent = new Intent(getApplicationContext(), Launcher.class);
@@ -212,6 +211,7 @@ public class LogInActivity extends AppCompatActivity {
 
     /**
      * Retrieve user's entered credentials
+     *
      * @return
      */
     private UserCredential retrieveUserCredentials() {
@@ -232,6 +232,27 @@ public class LogInActivity extends AppCompatActivity {
         // Activity that it triggered.
         facebookCallbackManager.onActivityResult(requestCode, resultCode, data);
         twitterLoginButton.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void arcgisLogin() {
+        Intent intent = new Intent(getApplicationContext(), Launcher.class);
+        intent.putExtra("whoSentYou", "arcgis.com");
+        intent.putExtra("Credential_Log_In", "Authenticated");
+        startActivity(intent);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        String checkString = getIntent().getStringExtra("loggedOut");
+        if (checkString != null && checkString.equalsIgnoreCase("loggedOut")) {
+            fusePortal = null;
+            showMessage("Signed out successfully");
+        }
+    }
+
+    private void showMessage(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -267,7 +288,7 @@ public class LogInActivity extends AppCompatActivity {
                             credSet.add(credentials[0].getPassword());
                             sharedPreferences.edit().putStringSet("credentials", credSet);
                             arcgisLogin();
-                        }else
+                        } else
                             arcgisLogin();
                     } else if (fusePortal.getLoadStatus() == LoadStatus.FAILED_TO_LOAD) {
                         Snackbar.make(getCurrentFocus(), "Login failed, Please try again.", Snackbar.LENGTH_LONG).show();
@@ -282,26 +303,6 @@ public class LogInActivity extends AppCompatActivity {
             if (progressDialog != null)
                 progressDialog.dismiss();
         }
-    }
-
-    private void arcgisLogin() {
-        Intent intent = new Intent(getApplicationContext(), Launcher.class);
-        intent.putExtra("whoSentYou", "arcgis.com");
-        intent.putExtra("Credential_Log_In", "Authenticated");
-        startActivity(intent);
-    }
-
-    @Override public void onResume(){
-        super.onResume();
-        String checkString = getIntent().getStringExtra("loggedOut");
-        if(checkString != null && checkString.equalsIgnoreCase("loggedOut")){
-            fusePortal = null;
-            showMessage("Signed out successfully");
-        }
-    }
-
-    private void showMessage(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
 }

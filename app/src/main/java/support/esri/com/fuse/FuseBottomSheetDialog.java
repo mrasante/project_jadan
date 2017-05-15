@@ -15,26 +15,25 @@ import android.view.ViewGroup;
 public class FuseBottomSheetDialog extends BottomSheetDialog {
 
 
-    Context context;
     public View inflatedView;
+    Context context;
 
-    public FuseBottomSheetDialog(Context context){
+    public FuseBottomSheetDialog(Context context) {
         super(context);
-            this.context = context;
-        ViewGroup viewGroup = (ViewGroup)findViewById(android.R.id.content);
-        LayoutInflater layoutInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        inflatedView =   layoutInflater.inflate(R.layout.bottomsheet_recycler, viewGroup, false);
+        this.context = context;
+        ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
+        LayoutInflater layoutInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        inflatedView = layoutInflater.inflate(R.layout.bottomsheet_recycler, viewGroup, false);
     }
 
 
-
-    public void onCreate(Bundle savedInstanceState){
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(inflatedView);
 
     }
 
-    public void onStart(){
+    public void onStart() {
         super.onStart();
     }
 

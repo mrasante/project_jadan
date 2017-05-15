@@ -21,16 +21,16 @@ import support.esri.com.fuse.models.TwitterTrends;
 
 public class MyTwitterAPIClientExtender extends TwitterApiClient {
 
-    public MyTwitterAPIClientExtender(TwitterSession twitterSession){
+    public MyTwitterAPIClientExtender(TwitterSession twitterSession) {
         super(twitterSession);
     }
 
-    public CustomTwitterService getCustomTwitterService(){
-            return getService(CustomTwitterService.class);
+    public CustomTwitterService getCustomTwitterService() {
+        return getService(CustomTwitterService.class);
     }
 
 
-    public interface CustomTwitterService{
+    public interface CustomTwitterService {
         @GET("/1.1/trends/place.json")
         Call<List<TwitterTrends>> show(@Query("id") long id);
 
@@ -38,7 +38,7 @@ public class MyTwitterAPIClientExtender extends TwitterApiClient {
         Call<List<AvailableWoeId>> getAvailableWoeid();
 
         @GET("/1.1/application/rate_limit_status.json")
-        Call<AppRateLimit>  getRateLimit();
+        Call<AppRateLimit> getRateLimit();
     }
 
 }

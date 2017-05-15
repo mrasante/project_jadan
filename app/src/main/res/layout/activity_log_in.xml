@@ -4,9 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context="support.esri.com.fuse.LogInActivity"
-    android:padding="@dimen/activity_vertical_margin">
-
+    android:padding="@dimen/activity_vertical_margin"
+    tools:context="support.esri.com.fuse.LogInActivity">
 
 
     <include layout="@layout/content_log_in" />

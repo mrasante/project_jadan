@@ -18,7 +18,7 @@ public class FastAdapterItemImpl extends AbstractItem<FastAdapterItemImpl, FastA
 
     public String name;
 
-    @Override
+//    @Override
     public ViewHolder getViewHolder(View view) {
         return new ViewHolder(view);
     }

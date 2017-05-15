@@ -12,5 +12,5 @@ import retrofit2.http.Query;
 
 public interface CustomYahooClientService {
     @GET("/geocode?location=")
-    Call<List<YahooAddress>> searchYahooAddress(@Query("appid=")String appId, @Query("location")Double... coords);
+    Call<List<YahooAddress>> searchYahooAddress(@Query("appid=") String appId, @Query("location") Double... coords);
 }

@@ -89,10 +89,10 @@ import static support.esri.com.fuse.LogInActivity.twitterSession;
 
 public class MapActivity extends AppCompatActivity {
 
+    private static Toolbar toolbar;
     private ArcGISMap fuseMap;
     private MapView fuseMapView;
     private LocationDisplay locationDisplay;
-    private static Toolbar toolbar;
     private Drawer drawer;
     private Envelope envelope;
     private String woeid;
@@ -166,7 +166,7 @@ public class MapActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         try {
-            createMaterialDrawer(globalInstanceState, toolbar, getIntent());
+           createMaterialDrawer(globalInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -193,15 +193,6 @@ public class MapActivity extends AppCompatActivity {
         });
     }
 
-
-    /**
-     * Use this this created the navigation drawer. Uses material drawer by Mike Penz
-     *
-     * @param savedInstanceState
-     * @param drawerToolbar
-     * @param localIntent
-     * @throws Exception
-     */
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     private void createMaterialDrawer(Bundle savedInstanceState, Toolbar drawerToolbar, Intent localIntent) throws Exception {
@@ -287,11 +278,11 @@ public class MapActivity extends AppCompatActivity {
                             case 2:
                                 toggleTrending();
                                 break;
-                            /*case 3:
+                           /* case 3:
                                 activateVoiceGuidance();
                             case 4:
                                 performSearch("string");
-                            case 5:`
+                            case 5:
                                 getArcGISFeaturedContent();
                             case 6:
                                 showSettings();
@@ -448,17 +439,17 @@ public class MapActivity extends AppCompatActivity {
     }
 
 
-    private void plotPoints(List<Point> pointList){
+    private void plotPoints(List<Point> pointList) {
         GraphicsOverlay graphicsOverlay = new GraphicsOverlay(GraphicsOverlay.RenderingMode.DYNAMIC);
         Graphic graphic = null;
         SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.CIRCLE, 205, 8);
 
-        for(Point plotPoint : pointList){
+        for (Point plotPoint : pointList) {
             graphic = new Graphic(plotPoint);
             graphic.setSymbol(simpleMarkerSymbol);
             graphicsOverlay.getGraphics().add(graphic);
         }
-       fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
+        fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
 
     }
 
@@ -466,6 +457,7 @@ public class MapActivity extends AppCompatActivity {
     /**
      * Builds a treemap of twitter's available WoeID values to which to compare returned values
      * from service querry
+     *
      * @param yahooWoeId
      * @param myTwitterApiClient
      * @return
@@ -542,6 +534,34 @@ public class MapActivity extends AppCompatActivity {
             locationDisplay.setAutoPanMode(LocationDisplay.AutoPanMode.NAVIGATION);
             locationDisplay.startAsync();
         }
+
+    }
+
+    private String retrieveTwitterWoeidOnPan(NavigationChangedEvent navChangeEvent) {
+        try {
+            boolean isNavigating = navChangeEvent.isNavigating() ? true : false;
+
+            if (!isNavigating) {
+                Point point = new Point(fuseMapView.getVisibleArea().getExtent().getCenter().getX(),
+                        fuseMapView.getVisibleArea().getExtent().getCenter().getY(), fuseMap.getSpatialReference());
+                Point projectedPoint = (Point) GeometryEngine.project(point, SpatialReference.create(4326));
+                lat = projectedPoint.getX();
+                longi = projectedPoint.getY();
+            } else
+                return null;
+            Double[] coords = {lat, longi};
+            String woeidString = new YahooWOEIDService().execute(coords).get();
+            if (woeidString.length() == 0) {
+                return "55988306";
+            }
+            Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
+            obtainTrendingTopics(twitterSession, woeidVal);
+        } catch (ExecutionException | InterruptedException ioe) {
+            Log.e(this.getClass().getName() + " Longi ", ioe.getMessage());
+        }
+        String value = woeid != null ? woeid : null;
+
+        return value;
 
     }
 
@@ -633,35 +653,6 @@ public class MapActivity extends AppCompatActivity {
 
         }
 
-
-    }
-
-
-    private String retrieveTwitterWoeidOnPan(NavigationChangedEvent navChangeEvent) {
-        try {
-            boolean isNavigating = navChangeEvent.isNavigating() ? true : false;
-
-            if (!isNavigating) {
-                Point point = new Point(fuseMapView.getVisibleArea().getExtent().getCenter().getX(),
-                        fuseMapView.getVisibleArea().getExtent().getCenter().getY(), fuseMap.getSpatialReference());
-                Point projectedPoint = (Point) GeometryEngine.project(point, SpatialReference.create(4326));
-                lat = projectedPoint.getX();
-                longi = projectedPoint.getY();
-            } else
-                return null;
-            Double[] coords = {lat, longi};
-            String woeidString = new YahooWOEIDService().execute(coords).get();
-            if (woeidString.length() == 0) {
-                return "55988306";
-            }
-            Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
-            obtainTrendingTopics(twitterSession, woeidVal);
-        } catch (ExecutionException | InterruptedException ioe) {
-            Log.e(this.getClass().getName() + " Longi ", ioe.getMessage());
-        }
-        String value = woeid != null ? woeid : null;
-
-        return value;
 
     }
 

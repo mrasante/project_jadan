@@ -13,8 +13,8 @@ public class BasemapChanger {
         nameOfBasemap = basemapName;
     }*/
 
-    public static Basemap changeBasemapTo(String nameOfBasemap){
-        switch (nameOfBasemap){
+    public static Basemap changeBasemapTo(String nameOfBasemap) {
+        switch (nameOfBasemap) {
             case "Satellite":
                 return Basemap.createImageryWithLabelsVector();
 
@@ -25,7 +25,7 @@ public class BasemapChanger {
                 return Basemap.createDarkGrayCanvasVector();
 
             case "Streets":
-                return  Basemap.createStreetsNightVector();
+                return Basemap.createStreetsNightVector();
 
             default:
                 return Basemap.createDarkGrayCanvasVector();

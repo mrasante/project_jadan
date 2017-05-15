@@ -22,9 +22,9 @@ import java.util.concurrent.ExecutionException;
  */
 
 public class AppGeocoder extends AsyncTask<String, Void, List<GeocodeResult>> {
+    private static final String GEOCODE_URL = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer";
     UserCredential classCredential;
     List<GeocodeResult> geocodeResultList;
-    private static final String GEOCODE_URL = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer";
 
 
     public AppGeocoder(UserCredential userCredential) {
@@ -39,6 +39,7 @@ public class AppGeocoder extends AsyncTask<String, Void, List<GeocodeResult>> {
             GeocodeParameters geocodeParameters = new GeocodeParameters();
             geocodeParameters.setMaxResults(1000);
             locatorTask.setCredential(classCredential);
+
             Map<String, String> searchesMap = new HashMap<>();
             for (int i = 0; i < params.length; i++) {
                 searchesMap.put("Name", params[i]);
@@ -52,11 +53,11 @@ public class AppGeocoder extends AsyncTask<String, Void, List<GeocodeResult>> {
     }
 
 
-    public List<Point> getGeocodedLocations(List<GeocodeResult>  geocodeResultList){
+    public List<Point> getGeocodedLocations(List<GeocodeResult> geocodeResultList) {
         List<Point> returnPointValues = new ArrayList<>();
-        for (GeocodeResult geocodeResult : geocodeResultList){
+        for (GeocodeResult geocodeResult : geocodeResultList) {
             returnPointValues.add(geocodeResult.getDisplayLocation());
         }
-        return  returnPointValues;
+        return returnPointValues;
     }
 }

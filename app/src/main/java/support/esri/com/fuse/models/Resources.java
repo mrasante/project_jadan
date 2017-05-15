@@ -1,4 +1,3 @@
-
 package support.esri.com.fuse.models;
 
 import com.google.gson.annotations.Expose;
@@ -6,15 +5,15 @@ import com.google.gson.annotations.SerializedName;
 
 public class Resources {
 
- /*   @SerializedName("users")
-    @Expose
-    private Users users;
-    @SerializedName("statuses")
-    @Expose
-    private Statuses statuses;
-    @SerializedName("help")
-    @Expose
-    private Help help;*/
+    /*   @SerializedName("users")
+       @Expose
+       private Users users;
+       @SerializedName("statuses")
+       @Expose
+       private Statuses statuses;
+       @SerializedName("help")
+       @Expose
+       private Help help;*/
     @SerializedName("search")
     @Expose
     private Search search;

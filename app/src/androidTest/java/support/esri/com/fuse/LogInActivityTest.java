@@ -74,7 +74,7 @@ public class LogInActivityTest {
                         withParent(withId(R.id.toolbar)),
                         isDisplayed()));
         appCompatImageButton3.perform(click());
-
+/*
         ViewInteraction recyclerView = onView(
                 allOf(withId(R.id.material_drawer_recycler_view),
                         withParent(withId(R.id.material_drawer_slider_layout)),
@@ -170,7 +170,7 @@ public class LogInActivityTest {
                         withParent(withId(R.id.material_drawer_slider_layout)),
                         isDisplayed()));
         recyclerView9.perform(actionOnItemAtPosition(8, click()));
-
+*/
     }
 
 }
