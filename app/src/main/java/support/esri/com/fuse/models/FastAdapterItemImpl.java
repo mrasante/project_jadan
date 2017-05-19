@@ -17,8 +17,9 @@ import support.esri.com.fuse.R;
 public class FastAdapterItemImpl extends AbstractItem<FastAdapterItemImpl, FastAdapterItemImpl.ViewHolder> {
 
     public String name;
+    public List<Location> locations;
 
-//    @Override
+    //    @Override
     public ViewHolder getViewHolder(View view) {
         return new ViewHolder(view);
     }
@@ -38,6 +39,7 @@ public class FastAdapterItemImpl extends AbstractItem<FastAdapterItemImpl, FastA
     public void bindView(ViewHolder viewHolder, List<Object> payloads) {
         super.bindView(viewHolder, payloads);
         viewHolder.name.setText(name);
+
     }
 
     @Override

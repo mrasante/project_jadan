@@ -39,12 +39,12 @@ public class AppGeocoder extends AsyncTask<String, Void, List<GeocodeResult>> {
             GeocodeParameters geocodeParameters = new GeocodeParameters();
             geocodeParameters.setMaxResults(1000);
             locatorTask.setCredential(classCredential);
-
+/*
             Map<String, String> searchesMap = new HashMap<>();
             for (int i = 0; i < params.length; i++) {
                 searchesMap.put("Name", params[i]);
-            }
-            geocodeResultList = locatorTask.geocodeAsync(searchesMap, geocodeParameters).get();
+            }*/
+            geocodeResultList = locatorTask.geocodeAsync(params[0], geocodeParameters).get();
 
         } catch (ExecutionException | InterruptedException exeInt) {
 

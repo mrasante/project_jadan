@@ -34,16 +34,23 @@ import com.esri.arcgisruntime.geometry.SpatialReference;
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
+import com.esri.arcgisruntime.mapping.GeoElement;
 import com.esri.arcgisruntime.mapping.Viewpoint;
+import com.esri.arcgisruntime.mapping.view.Callout;
 import com.esri.arcgisruntime.mapping.view.Graphic;
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay;
+import com.esri.arcgisruntime.mapping.view.IdentifyGraphicsOverlayResult;
 import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
 import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
+import com.esri.arcgisruntime.tasks.geocode.GeocodeResult;
+import com.facebook.login.LoginManager;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
+import com.mikepenz.fastadapter.FastAdapter;
+import com.mikepenz.fastadapter.IAdapter;
 import com.mikepenz.fastadapter.commons.adapters.FastItemAdapter;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
 import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
@@ -64,6 +71,7 @@ import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
 import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.mikepenz.materialdrawer.util.DrawerUIUtils;
 import com.mikepenz.materialize.util.UIUtils;
+import com.twitter.sdk.android.Twitter;
 import com.twitter.sdk.android.core.TwitterSession;
 
 import java.io.IOException;
@@ -72,19 +80,25 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Response;
+import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
+import support.esri.com.fuse.models.Location;
 import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
 import support.esri.com.fuse.models.YahooWOEIDService;
 
 import static support.esri.com.fuse.LogInActivity.fusePortal;
+import static support.esri.com.fuse.LogInActivity.sessionKeeper;
+import static support.esri.com.fuse.LogInActivity.tracker;
 import static support.esri.com.fuse.LogInActivity.twitterSession;
 
 public class MapActivity extends AppCompatActivity {
@@ -99,7 +113,7 @@ public class MapActivity extends AppCompatActivity {
     private Bundle globalInstanceState;
     private double lat;
     private double longi;
-    private TwitterTrends trend;
+    private TwitterTrends twitterTrends;
     private List<Trend> trendList;
     private FuseBottomSheetDialog fuseBottomSheetDialog;
     private FloatingActionButton fabIcon;
@@ -122,6 +136,7 @@ public class MapActivity extends AppCompatActivity {
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
         wiredSeekBarZoom();
+
 
         //welcome the user
         if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
@@ -165,7 +180,7 @@ public class MapActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         try {
-           createMaterialDrawer(globalInstanceState, toolbar, getIntent());
+            createMaterialDrawer(globalInstanceState, toolbar, getIntent());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -389,8 +404,8 @@ public class MapActivity extends AppCompatActivity {
             if (trendResponse.body() == null) {
                 return;
             }
-            trend = trendResponse.body().get(0);
-            trendList = trend.getTrends();
+            twitterTrends = trendResponse.body().get(0);
+            trendList = twitterTrends.getTrends();
 
         } catch (IOException ioException) {
             Log.e("IOException ", ioException.getMessage());
@@ -422,6 +437,7 @@ public class MapActivity extends AppCompatActivity {
                     if (fastAdapterItemList.size() <= 4) {
                         FastAdapterItemImpl fastAdapterItem = new FastAdapterItemImpl();
                         fastAdapterItem.name = trend.getName();
+                        fastAdapterItem.locations = twitterTrends.getLocations();
                         fastAdapterItemList.add(fastAdapterItem);
                     } else
                         break;
@@ -430,6 +446,22 @@ public class MapActivity extends AppCompatActivity {
 
                 fastItemAdapter.add(fastAdapterItemList);
                 recyclerView.setAdapter(fastItemAdapter);
+                fastItemAdapter.withSelectable(true);
+                fastItemAdapter.withOnClickListener(new FastAdapter.OnClickListener<FastAdapterItemImpl>() {
+                    @Override
+                    public boolean onClick(View v, IAdapter<FastAdapterItemImpl> adapter, FastAdapterItemImpl item, int position) {
+                        try {
+                            AppGeocoder appGeocoder = new AppGeocoder(new UserCredential("mrasante1", "apple@4GONES"));
+                            List<Point> pointList = appGeocoder.getGeocodedLocations(appGeocoder.execute(item.locations.get(0).getName()).get());
+                            plotPoints(pointList);
+
+                        } catch (InterruptedException | ExecutionException interExec) {
+                            Log.e("Geocoder Error: ", "Error: " + interExec.getMessage());
+                        }
+                        return true;
+                    }
+                });
+
                 LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MapActivity.this);
                 recyclerView.setLayoutManager(linearLayoutManager);
                 fuseBottomSheetDialog.show();
@@ -440,15 +472,34 @@ public class MapActivity extends AppCompatActivity {
 
     private void plotPoints(List<Point> pointList) {
         GraphicsOverlay graphicsOverlay = new GraphicsOverlay(GraphicsOverlay.RenderingMode.DYNAMIC);
-        Graphic graphic = null;
-        SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.CIRCLE, 205, 8);
+        //clear mapview of all graphics overlay
+        if (fuseMapView.getGraphicsOverlays().size() != 0) {
+            fuseMapView.getGraphicsOverlays().clear();
+        }
 
+        Graphic graphic = null;
+        SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.DIAMOND, Color.CYAN, 15);
+        Point point = null;
         for (Point plotPoint : pointList) {
-            graphic = new Graphic(plotPoint);
+            point = (Point) GeometryEngine.project(plotPoint, fuseMap.getSpatialReference());
+            graphic = new Graphic(point);
             graphic.setSymbol(simpleMarkerSymbol);
             graphicsOverlay.getGraphics().add(graphic);
         }
         fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
+        fuseMapView.setViewpointGeometryAsync(graphicsOverlay.getExtent());
+        try {
+            IdentifyGraphicsOverlayResult identifieds = fuseMapView.identifyGraphicsOverlayAsync(graphicsOverlay, fuseMapView.locationToScreen(point), 100, true, 5).get();
+            GeoElement geoElement = identifieds.getPopups().get(0).getGeoElement();
+            Callout callout = fuseMapView.getCallout();
+            callout.setGeoElement(geoElement, (Point) graphic.getGeometry());
+            Callout.ShowOptions showOptions = new Callout.ShowOptions(true, true, true);
+//            callout.setStyle(Callout.Style.LeaderPosition.LOWER_LEFT_CORNER);
+            callout.setShowOptions(showOptions);
+            callout.show();
+        } catch (InterruptedException | ExecutionException interExev) {
+
+        }
 
     }
 
@@ -489,6 +540,13 @@ public class MapActivity extends AppCompatActivity {
         switch (whoSendYou) {
 
             case "arcgis.com":
+                new LoggOutAsyncTask().onPreExecute();
+                break;
+            case "Twitter":
+                new LoggOutAsyncTask().onPreExecute();
+                break;
+
+            case "Facebook":
                 new LoggOutAsyncTask().onPreExecute();
                 break;
             default:
@@ -618,18 +676,30 @@ public class MapActivity extends AppCompatActivity {
         //execute only to log out the account
         @Override
         protected Void doInBackground(Void... voids) {
-            fusePortal.setCredential(new UserCredential("x", "x"));
-            fusePortal.loadAsync();
-            fusePortal.addDoneLoadingListener(new Runnable() {
-                @Override
-                public void run() {
-                    Intent intent = new Intent(getApplicationContext(), LogInActivity.class);
-                    intent.putExtra("loggedOut", "loggedOut");
-                    startActivity(intent);
-                }
-            });
+            if (fusePortal != null) {
+                logOut();
+            }
 
+            if (twitterSession != null) {
+                Twitter.logOut();
+                logOut();
+            }
+
+            if (tracker != null) {
+                tracker.stopTracking();
+                LoginManager.getInstance().logOut();
+                logOut();
+            }
             return null;
+        }
+
+        private void logOut() {
+            twitterSession = null;
+            fusePortal = null;
+            sessionKeeper.clearSharedPreferences();
+            Intent intent = new Intent(getApplicationContext(), LogInActivity.class);
+            intent.putExtra("loggedOut", "loggedOut");
+            startActivity(intent);
         }
 
         @Override

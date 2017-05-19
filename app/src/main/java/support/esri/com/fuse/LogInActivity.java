@@ -1,7 +1,6 @@
 package support.esri.com.fuse;
 
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -25,6 +24,7 @@ import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.Profile;
 import com.facebook.ProfileTracker;
+import com.facebook.login.LoginBehavior;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.twitter.sdk.android.Twitter;
@@ -34,7 +34,6 @@ import com.twitter.sdk.android.core.TwitterAuthConfig;
 import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
 import com.twitter.sdk.android.core.identity.TwitterLoginButton;
-import com.twitter.sdk.android.core.models.Search;
 import com.twitter.sdk.android.core.models.User;
 
 import java.util.HashSet;
@@ -49,13 +48,11 @@ public class LogInActivity extends AppCompatActivity {
     // Note: Your consumer key and secret should be obfuscated in your source code before shipping.
 
 
-    private static final String PREFERENCES = "REMEMBER ME";
     public static Portal fusePortal;
     public static boolean loggedIn;
     public static TwitterSession twitterSession;
     static TwitterAuthConfig authConfig;
     private CheckBox rememberMeChkBox;
-    private SharedPreferences sharedPreferences;
     private EditText usernameEditText;
     private EditText passwordEditText;
     private boolean isChecked;
@@ -64,6 +61,10 @@ public class LogInActivity extends AppCompatActivity {
     private LoginButton facebookButton;
     private CallbackManager facebookCallbackManager;
     private TwitterLoginButton twitterLoginButton;
+    private boolean progressFlag = true;
+    public static SessionKeeper sessionKeeper;
+    public static ProfileTracker tracker;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,6 +81,9 @@ public class LogInActivity extends AppCompatActivity {
                 startLauncherActivity();
             }
         });
+
+        //create session object to help maintain app state
+        sessionKeeper = new SessionKeeper(getApplicationContext());
         //for logging in with arcgis
         authenticateWithArcGIS();
 
@@ -88,6 +92,25 @@ public class LogInActivity extends AppCompatActivity {
 
         //for logging in with twitter
         authenticateWithTwitter();
+        checkIfRemember();
+    }
+
+
+    @Override
+    public void onRestart() {
+        super.onRestart();
+    }
+
+
+    private void checkIfRemember() {
+
+        if (sessionKeeper != null && sessionKeeper.isContainsCredentials("username", "password")) {
+            String username = sessionKeeper.getUsername();
+            String password = sessionKeeper.getPassword();
+            UserCredential userCredential = new UserCredential(username, password);
+            progressFlag = false;
+            new LoginAsyncTask().execute(userCredential);
+        }
     }
 
     private void authenticateWithTwitter() {
@@ -138,8 +161,8 @@ public class LogInActivity extends AppCompatActivity {
         facebookCallbackManager = CallbackManager.Factory.create();
         facebookButton.registerCallback(facebookCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
-            public void onSuccess(LoginResult loginResult) {
-                new ProfileTracker() {
+            public void onSuccess(final LoginResult loginResult) {
+                tracker = new ProfileTracker() {
                     @Override
                     protected void onCurrentProfileChanged(Profile oldProfile, Profile currentProfile) {
                         Intent intent = new Intent(getApplicationContext(), Launcher.class);
@@ -149,6 +172,8 @@ public class LogInActivity extends AppCompatActivity {
                         startActivity(intent);
                     }
                 };
+
+
             }
 
 
@@ -171,7 +196,7 @@ public class LogInActivity extends AppCompatActivity {
 
     private void authenticateWithArcGIS() {
         //init the sharedPreferences reference;
-        sharedPreferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+//        sharedPreferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
 
         //get handles on all controls
         rememberMeChkBox = (CheckBox) findViewById(R.id.remember_me_auth);
@@ -231,6 +256,7 @@ public class LogInActivity extends AppCompatActivity {
         // Make sure that the twitterLoginButton hears the result from any
         // Activity that it triggered.
         facebookCallbackManager.onActivityResult(requestCode, resultCode, data);
+
         twitterLoginButton.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -238,6 +264,7 @@ public class LogInActivity extends AppCompatActivity {
         Intent intent = new Intent(getApplicationContext(), Launcher.class);
         intent.putExtra("whoSentYou", "arcgis.com");
         intent.putExtra("Credential_Log_In", "Authenticated");
+        Object o = sessionKeeper != null ? intent.putExtra("rememberMe", "Remembered") : intent.putExtra("rememberMe", "NotRemembered");
         startActivity(intent);
     }
 
@@ -245,10 +272,12 @@ public class LogInActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         String checkString = getIntent().getStringExtra("loggedOut");
-        if (checkString != null && checkString.equalsIgnoreCase("loggedOut")) {
+      /*  if (checkString != null && checkString.equalsIgnoreCase("loggedOut")) {
             fusePortal = null;
             showMessage("Signed out successfully");
         }
+*/
+
     }
 
     private void showMessage(String message) {
@@ -264,6 +293,7 @@ public class LogInActivity extends AppCompatActivity {
 
         @Override
         public void onPreExecute() {
+            if(progressFlag)
             progressDialog = ProgressDialog.show(LogInActivity.this, "Signing in", "Authenticating with arcgis.com...", true);
         }
 
@@ -286,7 +316,8 @@ public class LogInActivity extends AppCompatActivity {
                             Set<String> credSet = new HashSet<>();
                             credSet.add(credentials[0].getUsername());
                             credSet.add(credentials[0].getPassword());
-                            sharedPreferences.edit().putStringSet("credentials", credSet);
+                            sessionKeeper.setUsername(credentials[0].getUsername());
+                            sessionKeeper.setPassword(credentials[0].getPassword());
                             arcgisLogin();
                         } else
                             arcgisLogin();

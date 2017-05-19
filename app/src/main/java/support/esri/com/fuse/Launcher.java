@@ -7,7 +7,7 @@ import android.support.v7.app.AppCompatActivity;
 
 public class Launcher extends AppCompatActivity {
 
-    private static final long DELAY_TIME = 500;
+    private long DELAY_TIME = 500;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,7 +30,8 @@ public class Launcher extends AppCompatActivity {
                     intent.putExtra("facebookUsername", facebookUserName);
                     intent.putExtra("facebookProfileUrl", facebookImageUrl);
                     intent.putExtra("whoSentYou", "Facebook");
-                } else if (getIntent().getStringExtra("whoSentYou").equalsIgnoreCase("arcgis.com")) {
+                    DELAY_TIME = 500;
+                } else if (getIntent().getStringExtra("whoSentYou").equalsIgnoreCase("arcgis.com") && getIntent().getStringExtra("rememberMe").equalsIgnoreCase("Remembered")) {
                     intent.putExtra("whoSentYou", "arcgis.com");
                 }
                 startActivity(intent);
