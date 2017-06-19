@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -22,8 +23,10 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
@@ -36,6 +39,8 @@ import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
 import com.esri.arcgisruntime.mapping.GeoElement;
 import com.esri.arcgisruntime.mapping.Viewpoint;
+import com.esri.arcgisruntime.mapping.popup.Popup;
+import com.esri.arcgisruntime.mapping.popup.PopupDefinition;
 import com.esri.arcgisruntime.mapping.view.Callout;
 import com.esri.arcgisruntime.mapping.view.Graphic;
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay;
@@ -46,7 +51,6 @@ import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
 import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
-import com.esri.arcgisruntime.tasks.geocode.GeocodeResult;
 import com.facebook.login.LoginManager;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 import com.mikepenz.fastadapter.FastAdapter;
@@ -80,9 +84,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
@@ -91,7 +93,6 @@ import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
-import support.esri.com.fuse.models.Location;
 import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
 import support.esri.com.fuse.models.YahooWOEIDService;
@@ -101,7 +102,7 @@ import static support.esri.com.fuse.LogInActivity.sessionKeeper;
 import static support.esri.com.fuse.LogInActivity.tracker;
 import static support.esri.com.fuse.LogInActivity.twitterSession;
 
-public class MapActivity extends AppCompatActivity {
+public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener{
 
     private static Toolbar toolbar;
     private ArcGISMap fuseMap;
@@ -121,6 +122,8 @@ public class MapActivity extends AppCompatActivity {
     private Viewpoint viewPoint;
     private boolean trending;
     private SeekBar seekBar;
+    private FloatingActionButton basemapFab;
+    private static AppCompatActivity currentActivity = null;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -128,6 +131,7 @@ public class MapActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
+        currentActivity = this;
         setSupportActionBar(toolbar);
 
         //create and add the map with basemap
@@ -137,6 +141,14 @@ public class MapActivity extends AppCompatActivity {
         fuseMapView.setMap(fuseMap);
         wiredSeekBarZoom();
 
+        basemapFab = (FloatingActionButton)findViewById(R.id.basemap_action_button);
+//        basemapFab.setImageIcon(Icon.);
+        basemapFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CustomNavViewer.launchBasemapSelector(currentActivity);
+            }
+        });
 
         //welcome the user
         if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
@@ -314,7 +326,6 @@ public class MapActivity extends AppCompatActivity {
                                     Snackbar.make(fuseMapView, "Basemap changed to " + fuseMap.getBasemap().getName(), Snackbar.LENGTH_LONG).show();
                                 }
                             });
-
                         }
                         return false;
                     }
@@ -359,10 +370,12 @@ public class MapActivity extends AppCompatActivity {
         if (trending) {
             fuseMapView.removeNavigationChangedListener(navigationChangedListener);
             trending = false;
+            Snackbar.make(getCurrentFocus(), "Trending deactivated", Snackbar.LENGTH_LONG).show();
             return trending;
         } else {
             fuseMapView.addNavigationChangedListener(navigationChangedListener);
             trending = true;
+            Snackbar.make(getCurrentFocus(), "Trending activated", Snackbar.LENGTH_LONG).show();
         }
 
         return trending;
@@ -480,22 +493,31 @@ public class MapActivity extends AppCompatActivity {
         Graphic graphic = null;
         SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.DIAMOND, Color.CYAN, 15);
         Point point = null;
+        PopupDefinition popupDefinition = null;
         for (Point plotPoint : pointList) {
             point = (Point) GeometryEngine.project(plotPoint, fuseMap.getSpatialReference());
             graphic = new Graphic(point);
             graphic.setSymbol(simpleMarkerSymbol);
+            popupDefinition = new PopupDefinition(graphic);
             graphicsOverlay.getGraphics().add(graphic);
+            graphicsOverlay.setPopupDefinition(popupDefinition);
+
         }
         fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
         fuseMapView.setViewpointGeometryAsync(graphicsOverlay.getExtent());
         try {
+            graphicsOverlay.setPopupEnabled(true);
             IdentifyGraphicsOverlayResult identifieds = fuseMapView.identifyGraphicsOverlayAsync(graphicsOverlay, fuseMapView.locationToScreen(point), 100, true, 5).get();
+            List<Popup> popup = identifieds.getPopups();
+            if(popup.size() == 0)
+                return;
             GeoElement geoElement = identifieds.getPopups().get(0).getGeoElement();
             Callout callout = fuseMapView.getCallout();
             callout.setGeoElement(geoElement, (Point) graphic.getGeometry());
             Callout.ShowOptions showOptions = new Callout.ShowOptions(true, true, true);
-//            callout.setStyle(Callout.Style.LeaderPosition.LOWER_LEFT_CORNER);
             callout.setShowOptions(showOptions);
+            RelativeLayout callout_layout = (RelativeLayout) LayoutInflater.from(getApplicationContext()).inflate(R.layout.callout_layout, null);
+            callout.setContent(callout_layout);
             callout.show();
         } catch (InterruptedException | ExecutionException interExev) {
 
@@ -622,6 +644,11 @@ public class MapActivity extends AppCompatActivity {
         String value = woeid != null ? woeid : null;
 
         return value;
+
+    }
+
+    @Override
+    public void onFragmentInteraction(Uri uri) {
 
     }
 

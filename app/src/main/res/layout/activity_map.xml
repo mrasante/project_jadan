@@ -59,5 +59,16 @@
         android:max="10"
         android:progress="3" />
 
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/basemap_action_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:src="@drawable/layers"
+        app:backgroundTint="@android:color/darker_gray"
+        app:fabSize="mini"
+        android:layout_alignTop="@+id/fab"
+        android:layout_alignEnd="@+id/seekBar" />
+
 
 </RelativeLayout>

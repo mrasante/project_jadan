@@ -1,0 +1,22 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:paddingBottom="50dp"
+    android:paddingLeft="200dp"
+    android:paddingRight="10dp"
+    android:paddingTop="50dp"
+    tools:context="support.esri.com.fuse.BasemapFragment">
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/basemap_fragment_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:alpha="0.9"
+        android:background="@color/tw__transparent">
+
+    </android.support.v7.widget.RecyclerView>
+
+</RelativeLayout>
