@@ -1,18 +1,16 @@
 package support.esri.com.fuse;
 
-import com.twitter.sdk.android.Twitter;
 import com.twitter.sdk.android.core.TwitterApiClient;
-import com.twitter.sdk.android.core.TwitterRateLimit;
 import com.twitter.sdk.android.core.TwitterSession;
 
 import java.util.List;
 
-import io.fabric.sdk.android.Fabric;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
+import support.esri.com.fuse.models.ClosestWoeId;
 import support.esri.com.fuse.models.TwitterTrends;
 
 /**
@@ -39,6 +37,9 @@ public class MyTwitterAPIClientExtender extends TwitterApiClient {
 
         @GET("/1.1/application/rate_limit_status.json")
         Call<AppRateLimit> getRateLimit();
+
+        @GET("/1.1/trends/closest.json")
+        Call<List<ClosestWoeId>> getClosestWoeId(@Query("lat") double lat, @Query("long") double longitude);
     }
 
 }

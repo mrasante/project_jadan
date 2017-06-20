@@ -73,4 +73,5 @@ dependencies {
     compile 'org.jsoup:jsoup:1.10.2'
     compile 'com.mikepenz:fastadapter-commons:2.5.2@aar'
     testCompile 'junit:junit:4.12'
+    compile 'javax.annotation:javax.annotation-api:1.2'
 }

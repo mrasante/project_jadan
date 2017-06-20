@@ -50,7 +50,7 @@ import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
 import com.esri.arcgisruntime.security.UserCredential;
-import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
+import com.esri.arcgisruntime.symbology.PictureMarkerSymbol;
 import com.facebook.login.LoginManager;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
 import com.mikepenz.fastadapter.FastAdapter;
@@ -76,7 +76,6 @@ import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.mikepenz.materialdrawer.util.DrawerUIUtils;
 import com.mikepenz.materialize.util.UIUtils;
 import com.twitter.sdk.android.Twitter;
-import com.twitter.sdk.android.core.TwitterSession;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -93,17 +92,18 @@ import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
+import support.esri.com.fuse.models.ClosestWoeId;
 import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
-import support.esri.com.fuse.models.YahooWOEIDService;
 
 import static support.esri.com.fuse.LogInActivity.fusePortal;
 import static support.esri.com.fuse.LogInActivity.sessionKeeper;
 import static support.esri.com.fuse.LogInActivity.tracker;
 import static support.esri.com.fuse.LogInActivity.twitterSession;
 
-public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener{
+public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener {
 
+    private static final String SYMBOL_URL = "http://static.arcgis.com/images/Symbols/Basic/BlueStickpin.png";
     private static Toolbar toolbar;
     private ArcGISMap fuseMap;
     private MapView fuseMapView;
@@ -122,8 +122,13 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     private Viewpoint viewPoint;
     private boolean trending;
     private SeekBar seekBar;
+    private Point point;
+    private Graphic graphic;
     private FloatingActionButton basemapFab;
+    private PopupDefinition popupDefinition;
     private static AppCompatActivity currentActivity = null;
+    private GraphicsOverlay graphicsOverlay;
+    private MyTwitterAPIClientExtender myTwitterApiClient;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -133,7 +138,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         currentActivity = this;
         setSupportActionBar(toolbar);
-
+        setTitle("Social GIS");
         //create and add the map with basemap
         fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
         fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
@@ -141,7 +146,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         fuseMapView.setMap(fuseMap);
         wiredSeekBarZoom();
 
-        basemapFab = (FloatingActionButton)findViewById(R.id.basemap_action_button);
+        basemapFab = (FloatingActionButton) findViewById(R.id.basemap_action_button);
 //        basemapFab.setImageIcon(Icon.);
         basemapFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -397,23 +402,14 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
 
-    private void obtainTrendingTopics(TwitterSession twitterSession, Long yahooWoeId) {
-
+    private void obtainTrendingTopics(MyTwitterAPIClientExtender myTwitterApiClient, Long yahooWoeId) {
         try {
-            MyTwitterAPIClientExtender myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
             Integer rateLimit = getAppRateLimit(myTwitterApiClient.getCustomTwitterService().getRateLimit().execute().body());
-
             if (rateLimit < 0) {
-                Log.e("RateLimit ", "Rate limit has been reached!!");
+                Snackbar.make(fuseMapView, "Twitter rate limit has been reached!!", Snackbar.LENGTH_LONG).show();
                 return;
             }
-
-            TreeMap<Integer, Integer> woeidMap = getIntegerTreeMap(yahooWoeId, myTwitterApiClient);
-            if (woeidMap == null) return;
-
-            Integer matchedKey = getKeyFromValue(woeidMap, Collections.min(woeidMap.values()));
-            Long idToUse = Long.valueOf(matchedKey);
-            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(idToUse).execute();
+            Response<List<TwitterTrends>> trendResponse = myTwitterApiClient.getCustomTwitterService().show(yahooWoeId).execute();
             if (trendResponse.body() == null) {
                 return;
             }
@@ -483,45 +479,53 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
 
-    private void plotPoints(List<Point> pointList) {
-        GraphicsOverlay graphicsOverlay = new GraphicsOverlay(GraphicsOverlay.RenderingMode.DYNAMIC);
+    private void plotPoints(final List<Point> pointList) {
+        graphicsOverlay = new GraphicsOverlay(GraphicsOverlay.RenderingMode.DYNAMIC);
         //clear mapview of all graphics overlay
         if (fuseMapView.getGraphicsOverlays().size() != 0) {
             fuseMapView.getGraphicsOverlays().clear();
         }
 
-        Graphic graphic = null;
-        SimpleMarkerSymbol simpleMarkerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.DIAMOND, Color.CYAN, 15);
-        Point point = null;
-        PopupDefinition popupDefinition = null;
-        for (Point plotPoint : pointList) {
-            point = (Point) GeometryEngine.project(plotPoint, fuseMap.getSpatialReference());
-            graphic = new Graphic(point);
-            graphic.setSymbol(simpleMarkerSymbol);
-            popupDefinition = new PopupDefinition(graphic);
-            graphicsOverlay.getGraphics().add(graphic);
-            graphicsOverlay.setPopupDefinition(popupDefinition);
+        final PictureMarkerSymbol pictureMarkerSymbol = new PictureMarkerSymbol(SYMBOL_URL);
+        pictureMarkerSymbol.setHeight(50);
+        pictureMarkerSymbol.setWidth(50);
+        pictureMarkerSymbol.loadAsync();
+        pictureMarkerSymbol.addDoneLoadingListener(new Runnable() {
+            @Override
+            public void run() {
+                if (pictureMarkerSymbol.getLoadStatus() == LoadStatus.LOADED) {
+                    for (Point plotPoint : pointList) {
+                        point = (Point) GeometryEngine.project(plotPoint, fuseMap.getSpatialReference());
+                        graphic = new Graphic(point);
+                        graphic.setSymbol(pictureMarkerSymbol);
+                        popupDefinition = new PopupDefinition(graphic);
+                        graphicsOverlay.getGraphics().add(graphic);
+                        graphicsOverlay.setPopupDefinition(popupDefinition);
+                    }
+                    fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
+                    fuseMapView.setViewpointGeometryAsync(graphicsOverlay.getExtent());
+                    try {
+                        graphicsOverlay.setPopupEnabled(true);
+                        IdentifyGraphicsOverlayResult identifieds = fuseMapView.identifyGraphicsOverlayAsync(graphicsOverlay,
+                                fuseMapView.locationToScreen(point), 100, true, 5).get();
+                        List<Popup> popup = identifieds.getPopups();
+                        if (popup.size() == 0)
+                            return;
+                        GeoElement geoElement = identifieds.getPopups().get(0).getGeoElement();
+                        Callout callout = fuseMapView.getCallout();
+                        callout.setGeoElement(geoElement, (Point) graphic.getGeometry());
+                        Callout.ShowOptions showOptions = new Callout.ShowOptions(true, true, true);
+                        callout.setShowOptions(showOptions);
+                        RelativeLayout callout_layout = (RelativeLayout) LayoutInflater.from(getApplicationContext()).inflate(R.layout.callout_layout, null);
+                        callout.setContent(callout_layout);
+                        callout.show();
+                    } catch (InterruptedException | ExecutionException interExev) {
 
-        }
-        fuseMapView.getGraphicsOverlays().add(graphicsOverlay);
-        fuseMapView.setViewpointGeometryAsync(graphicsOverlay.getExtent());
-        try {
-            graphicsOverlay.setPopupEnabled(true);
-            IdentifyGraphicsOverlayResult identifieds = fuseMapView.identifyGraphicsOverlayAsync(graphicsOverlay, fuseMapView.locationToScreen(point), 100, true, 5).get();
-            List<Popup> popup = identifieds.getPopups();
-            if(popup.size() == 0)
-                return;
-            GeoElement geoElement = identifieds.getPopups().get(0).getGeoElement();
-            Callout callout = fuseMapView.getCallout();
-            callout.setGeoElement(geoElement, (Point) graphic.getGeometry());
-            Callout.ShowOptions showOptions = new Callout.ShowOptions(true, true, true);
-            callout.setShowOptions(showOptions);
-            RelativeLayout callout_layout = (RelativeLayout) LayoutInflater.from(getApplicationContext()).inflate(R.layout.callout_layout, null);
-            callout.setContent(callout_layout);
-            callout.show();
-        } catch (InterruptedException | ExecutionException interExev) {
+                    }
 
-        }
+                }
+            }
+        });
 
     }
 
@@ -622,7 +626,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     private String retrieveTwitterWoeidOnPan(NavigationChangedEvent navChangeEvent) {
         try {
             boolean isNavigating = navChangeEvent.isNavigating() ? true : false;
-
             if (!isNavigating) {
                 Point point = new Point(fuseMapView.getVisibleArea().getExtent().getCenter().getX(),
                         fuseMapView.getVisibleArea().getExtent().getCenter().getY(), fuseMap.getSpatialReference());
@@ -632,13 +635,11 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             } else
                 return null;
             Double[] coords = {lat, longi};
-            String woeidString = new YahooWOEIDService().execute(coords).get();
-            if (woeidString.length() == 0) {
-                return "55988306";
-            }
-            Long woeidVal = woeidString != null ? Long.parseLong(woeidString) : Long.parseLong("55988306");
-            obtainTrendingTopics(twitterSession, woeidVal);
-        } catch (ExecutionException | InterruptedException ioe) {
+            myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
+            Response<List<ClosestWoeId>> responseRoot = myTwitterApiClient.getCustomTwitterService().getClosestWoeId(coords[0], coords[1]).execute();
+            Long woeidVal = responseRoot.body().get(0).getWoeid();
+            obtainTrendingTopics(myTwitterApiClient, woeidVal);
+        } catch (IOException ioe) {
             Log.e(this.getClass().getName() + " Longi ", ioe.getMessage());
         }
         String value = woeid != null ? woeid : null;

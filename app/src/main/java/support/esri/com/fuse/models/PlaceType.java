@@ -1,31 +1,32 @@
+
 package support.esri.com.fuse.models;
 
-import com.google.gson.annotations.Expose;
+import javax.annotation.Generated;
 import com.google.gson.annotations.SerializedName;
 
+@Generated("net.hexar.json2pojo")
+@SuppressWarnings("unused")
 public class PlaceType {
 
     @SerializedName("code")
-    @Expose
-    private Integer code;
+    private Long mCode;
     @SerializedName("name")
-    @Expose
-    private String name;
+    private String mName;
 
-    public Integer getCode() {
-        return code;
+    public Long getCode() {
+        return mCode;
     }
 
-    public void setCode(Integer code) {
-        this.code = code;
+    public void setCode(Long code) {
+        mCode = code;
     }
 
     public String getName() {
-        return name;
+        return mName;
     }
 
     public void setName(String name) {
-        this.name = name;
+        mName = name;
     }
 
 }
