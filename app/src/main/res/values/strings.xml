@@ -21,4 +21,7 @@
     <string name="name">name</string>
     <string name="description">description</string>
     <string name="enter_book_name">Bookmark Name</string>
+    <string name="search_title">Search</string>
+    <string name="menu_item_title">search items</string>
+    <string name="search_hint">Search</string>
 </resources>

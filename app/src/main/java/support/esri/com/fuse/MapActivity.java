@@ -3,17 +3,19 @@ package support.esri.com.fuse;
 import android.Manifest;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
+import android.app.SearchManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -25,9 +27,13 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -87,13 +93,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Response;
 import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
-import support.esri.com.fuse.models.AvailableWoeId;
 import support.esri.com.fuse.models.ClosestWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
 import support.esri.com.fuse.models.Trend;
@@ -146,13 +150,14 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         currentActivity = this;
         setSupportActionBar(toolbar);
         setTitle("Social GIS");
+        handleSearchIntent(getIntent());
         //create and add the map with basemap
         fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
         fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
-        bookmarkFab_plus = (FloatingActionButton)findViewById(R.id.bookmark_fab_plus);
-        bookmarkFab_remove = (FloatingActionButton)findViewById(R.id.bookmark_fab_remove);
+        bookmarkFab_plus = (FloatingActionButton) findViewById(R.id.bookmark_fab_plus);
+        bookmarkFab_remove = (FloatingActionButton) findViewById(R.id.bookmark_fab_remove);
         bookmarkFab_plus.setVisibility(View.INVISIBLE);
         bookmarkFab_remove.setVisibility(View.INVISIBLE);
 
@@ -194,7 +199,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             }
         });
 
-        bookmarkFab = (FloatingActionButton)findViewById(R.id.bookmark_fab);
+        bookmarkFab = (FloatingActionButton) findViewById(R.id.bookmark_fab);
         bookmarkFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -212,9 +217,9 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         bookmarkFab_remove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View v) {
-               AlertDialog.Builder removeAlert = new AlertDialog.Builder(MapActivity.this);
+                AlertDialog.Builder removeAlert = new AlertDialog.Builder(MapActivity.this);
                 removeAlert.setMessage("All bookmarks will be permanently removed. \n Do you want to proceed?")
-                        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener(){
+                        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
 
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -222,25 +227,37 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                                 Toast.makeText(v.getContext(), "All bookmarks removed", Toast.LENGTH_LONG).show();
                                 FragmentManager fragmentManager = getSupportFragmentManager();
                                 List<Fragment> listOfFragments = fragmentManager.getFragments();
-                                for(Fragment fragment : listOfFragments){
+                                for (Fragment fragment : listOfFragments) {
                                     fragmentManager.beginTransaction().hide(fragment).commit();
                                 }
                             }
                         })
-                    .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Toast.makeText(v.getContext(), "User cancelled bookmark clearing.", Toast.LENGTH_LONG).show();
-                        }
-                    }).show();
+                        .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Toast.makeText(v.getContext(), "User cancelled bookmark clearing.", Toast.LENGTH_LONG).show();
+                            }
+                        }).show();
             }
         });
 
 
     }
 
-    private void toggleBookmarkFabVisibility(){
-        if(bookmarkFab_plus.getVisibility() != View.VISIBLE && bookmarkFab_remove.getVisibility() != View.VISIBLE){
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        handleSearchIntent(intent);
+    }
+
+    private void handleSearchIntent(Intent intent) {
+        if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
+            String searchQuery = intent.getStringExtra(SearchManager.QUERY);
+        }
+    }
+
+    private void toggleBookmarkFabVisibility() {
+        if (bookmarkFab_plus.getVisibility() != View.VISIBLE && bookmarkFab_remove.getVisibility() != View.VISIBLE) {
             bookmarkFab_plus.setVisibility(View.VISIBLE);
             bookmarkFab_remove.setVisibility(View.VISIBLE);
 
@@ -251,7 +268,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             ObjectAnimator removeBookmarkFabAnimator = ObjectAnimator.ofFloat(bookmarkFab_remove, "translationY", 300f);
             removeBookmarkFabAnimator.setDuration(1000);
             removeBookmarkFabAnimator.start();
-        }else{
+        } else {
 
             ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(bookmarkFab_plus, "translationY", -150f);
             objectAnimator.setDuration(1000);
@@ -280,7 +297,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             e.printStackTrace();
         }
     }
-
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -407,19 +423,16 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 com.mikepenz.materialdrawer.R.color.material_drawer_dark_background));
         //we do not have the MiniDrawer view during CrossfadeDrawerLayout creation so we will add it here
         crossfadeDrawerLayout.getSmallView().addView(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-
         //define the crossfader to be used with the miniDrawer. This is required to be able to automatically toggle open / close
         miniResult.withCrossFader(new ICrossfader() {
             @Override
             public void crossfade() {
                 boolean isFaded = isCrossfaded();
                 crossfadeDrawerLayout.crossfade(400);
-
                 //only close the drawer if we were already faded and want to close it now
                 if (isFaded) {
                     drawer.getDrawerLayout().closeDrawer(GravityCompat.START);
                 }
-
             }
 
             @Override
@@ -427,6 +440,17 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 return crossfadeDrawerLayout.isCrossfaded();
             }
         });
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.options_menu, menu);
+        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView = (SearchView) menu.findItem(R.id.search).getActionView();
+        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+        return true;
     }
 
     private boolean toggleTrending() {
@@ -440,25 +464,12 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             trending = true;
             Snackbar.make(getCurrentFocus(), "Trending activated", Snackbar.LENGTH_LONG).show();
         }
-
         return trending;
     }
-
-
-    public Integer getKeyFromValue(TreeMap<Integer, Integer> map, Integer val) {
-        for (Integer value : map.keySet()) {
-            if (map.get(value) == val) {
-                return value;
-            }
-        }
-        return Integer.valueOf("1");
-    }
-
 
     private Integer getAppRateLimit(AppRateLimit appRateLimit) {
         return appRateLimit.getResources().getSearch().getSearchTweets().getLimit();
     }
-
 
     private void obtainTrendingTopics(MyTwitterAPIClientExtender myTwitterApiClient, Long yahooWoeId) {
         try {
@@ -473,11 +484,9 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             }
             twitterTrends = trendResponse.body().get(0);
             trendList = twitterTrends.getTrends();
-
         } catch (IOException ioException) {
             Log.e("IOException ", ioException.getMessage());
         }
-
         showTrendingUI();
     }
 
@@ -496,11 +505,8 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 fuseBottomSheetDialog = new FuseBottomSheetDialog(MapActivity.this);
                 RecyclerView recyclerView = (RecyclerView) fuseBottomSheetDialog.inflatedView.findViewById(R.id.fuse_recycler_sheet);
                 FastItemAdapter<FastAdapterItemImpl> fastItemAdapter = new FastItemAdapter<>();
-
                 List<FastAdapterItemImpl> fastAdapterItemList = new ArrayList<>();
-
                 for (Trend trend : trendList) {
-
                     if (fastAdapterItemList.size() <= 4) {
                         FastAdapterItemImpl fastAdapterItem = new FastAdapterItemImpl();
                         fastAdapterItem.name = trend.getName();
@@ -508,9 +514,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                         fastAdapterItemList.add(fastAdapterItem);
                     } else
                         break;
-
                 }
-
                 fastItemAdapter.add(fastAdapterItemList);
                 recyclerView.setAdapter(fastItemAdapter);
                 fastItemAdapter.withSelectable(true);
@@ -521,7 +525,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                             AppGeocoder appGeocoder = new AppGeocoder(new UserCredential("mrasante1", "apple@4GONES"));
                             List<Point> pointList = appGeocoder.getGeocodedLocations(appGeocoder.execute(item.locations.get(0).getName()).get());
                             plotPoints(pointList);
-
                         } catch (InterruptedException | ExecutionException interExec) {
                             Log.e("Geocoder Error: ", "Error: " + interExec.getMessage());
                         }
@@ -587,55 +590,21 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
 
     }
 
-
-    /**
-     * Builds a treemap of twitter's available WoeID values to which to compare returned values
-     * from service querry
-     *
-     * @param yahooWoeId
-     * @param myTwitterApiClient
-     * @return
-     * @throws IOException
-     */
-
-    @Nullable
-    private TreeMap<Integer, Integer> getIntegerTreeMap(Long yahooWoeId, MyTwitterAPIClientExtender myTwitterApiClient) throws IOException {
-        Response<List<AvailableWoeId>> availableWoeId = myTwitterApiClient.getCustomTwitterService().getAvailableWoeid().execute();
-        List<AvailableWoeId> availableWoeIdList = availableWoeId.body();
-        if (availableWoeIdList == null) {
-            return null;
-        }
-
-
-        Integer yahooWoeInteger = Integer.parseInt(String.valueOf(yahooWoeId));
-        TreeMap<Integer, Integer> woeidMap = new TreeMap<>();
-        for (AvailableWoeId avaWoeid : availableWoeIdList) {
-            if (avaWoeid.getWoeid() != 1) {
-                woeidMap.put(avaWoeid.getWoeid(), Math.abs(avaWoeid.getWoeid() - yahooWoeInteger));
-            }
-        }
-        return woeidMap;
-    }
-
-
     private void signoutAccount() {
         final String whoSendYou = getIntent().getStringExtra("whoSentYou");
         Log.e("whoSentYou", whoSendYou);
         switch (whoSendYou) {
-
             case "arcgis.com":
                 new LoggOutAsyncTask().onPreExecute();
                 break;
             case "Twitter":
                 new LoggOutAsyncTask().onPreExecute();
                 break;
-
             case "Facebook":
                 new LoggOutAsyncTask().onPreExecute();
                 break;
             default:
                 showMessage("Log out attempt");
-
         }
     }
 
@@ -695,17 +664,15 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             Double[] coords = {lat, longi};
             myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
             Response<List<ClosestWoeId>> responseRoot = myTwitterApiClient.getCustomTwitterService().getClosestWoeId(coords[0], coords[1]).execute();
-            if(responseRoot == null)
-                return  null;
+            if (responseRoot == null)
+                return null;
             Long woeidVal = responseRoot.body().get(0).getWoeid();
             obtainTrendingTopics(myTwitterApiClient, woeidVal);
         } catch (IOException ioe) {
             Log.e(this.getClass().getName() + " Longi ", ioe.getMessage());
         }
         String value = woeid != null ? woeid : null;
-
         return value;
-
     }
 
     @Override
@@ -714,7 +681,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
     private class PortalNetworkAsyncTask extends AsyncTask<Void, Void, Bitmap> {
-
         @Override
         public Bitmap doInBackground(Void... portals) {
             Bitmap bitmap = null;
@@ -741,7 +707,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 httpURLConnection.setDoInput(true);
                 httpURLConnection.connect();
                 is = httpURLConnection.getInputStream();
-
                 bitmap = BitmapFactory.decodeStream(is);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -760,7 +725,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
     private class LoggOutAsyncTask extends AsyncTask<Void, Void, Void> {
-
         //execute only to log out the account
         @Override
         protected Void doInBackground(Void... voids) {
@@ -792,7 +756,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
 
         @Override
         protected void onPreExecute() {
-
             AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MapActivity.this);
             alertDialogBuilder.setMessage("Are you sure you want to sign out of selected account?")
                     .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
@@ -807,13 +770,8 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
 
                         }
                     });
-
             alertDialogBuilder.create();
             alertDialogBuilder.show();
-
         }
-
-
     }
-
 }
