@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <EditText
+        android:id="@+id/bookmark_id"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="44dp"
+        android:ems="10"
+        android:hint="@string/enter_book_name"
+        android:inputType="textPersonName"
+        android:padding="@dimen/activity_vertical_margin"
+        android:textAlignment="center" />
+
+    <Button
+        android:id="@+id/bookmark_ok_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="35dp"
+        android:text="OK"
+        android:textSize="16dp"
+        android:layout_marginEnd="11dp"
+        android:layout_below="@+id/bookmark_id"
+        android:layout_toStartOf="@+id/bookmark_cancel_button" />
+
+    <Button
+        android:id="@+id/bookmark_cancel_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cancel"
+        android:layout_alignTop="@+id/bookmark_ok_button"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp" />
+</RelativeLayout>

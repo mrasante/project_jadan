@@ -46,18 +46,18 @@
         app:layout_anchor="@+id/fuse_map_view"
         app:layout_anchorGravity="bottom|left" />
 
-    <SeekBar
-        android:id="@+id/seekBar"
-        style="@style/Widget.AppCompat.SeekBar.Discrete"
-        android:layout_width="150dp"
-        android:layout_height="20dp"
-        android:layout_alignParentEnd="true"
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/bookmark_fab"
+        android:layout_width="wrap_content"
+        app:fabSize="mini"
+        app:backgroundTint="@android:color/darker_gray"
+        android:layout_height="wrap_content"
         android:layout_below="@+id/appBarLayout"
-        android:layout_marginEnd="10dp"
-        android:layout_marginTop="24dp"
-        android:layoutDirection="ltr"
-        android:max="10"
-        android:progress="3" />
+        android:src="@drawable/bookmark"
+        android:layout_alignStart="@+id/basemap_action_button"
+        android:layout_marginTop="25dp" />
+
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/basemap_action_button"
@@ -68,7 +68,30 @@
         app:backgroundTint="@android:color/darker_gray"
         app:fabSize="mini"
         android:layout_alignTop="@+id/fab"
-        android:layout_alignEnd="@+id/seekBar" />
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="10dp" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/bookmark_fab_plus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:backgroundTint="@android:color/darker_gray"
+        android:clickable="true"
+        app:fabSize="mini"
+        app:srcCompat="@mipmap/bookmark_plus"
+        android:layout_alignTop="@+id/bookmark_fab"
+        android:layout_alignStart="@+id/bookmark_fab" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/bookmark_fab_remove"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:backgroundTint="@android:color/darker_gray"
+        android:clickable="true"
+        app:fabSize="mini"
+        app:srcCompat="@mipmap/bookmark_remove"
+        android:layout_alignTop="@+id/bookmark_fab"
+        android:layout_alignStart="@+id/bookmark_fab" />
 
 
 </RelativeLayout>

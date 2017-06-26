@@ -1,6 +1,8 @@
 package support.esri.com.fuse;
 
 import android.Manifest;
+import android.animation.ObjectAnimator;
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -15,6 +17,8 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v7.app.AlertDialog;
@@ -82,7 +86,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
@@ -91,8 +94,8 @@ import retrofit2.Response;
 import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.AvailableWoeId;
-import support.esri.com.fuse.models.FastAdapterItemImpl;
 import support.esri.com.fuse.models.ClosestWoeId;
+import support.esri.com.fuse.models.FastAdapterItemImpl;
 import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
 
@@ -101,7 +104,8 @@ import static support.esri.com.fuse.LogInActivity.sessionKeeper;
 import static support.esri.com.fuse.LogInActivity.tracker;
 import static support.esri.com.fuse.LogInActivity.twitterSession;
 
-public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener {
+public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener,
+        BookmarkFragment.OnFragmentInteractionListener {
 
     private static final String SYMBOL_URL = "http://static.arcgis.com/images/Symbols/Basic/BlueStickpin.png";
     private static Toolbar toolbar;
@@ -129,6 +133,9 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     private static AppCompatActivity currentActivity = null;
     private GraphicsOverlay graphicsOverlay;
     private MyTwitterAPIClientExtender myTwitterApiClient;
+    private FloatingActionButton bookmarkFab;
+    private FloatingActionButton bookmarkFab_plus;
+    private FloatingActionButton bookmarkFab_remove;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -144,16 +151,20 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
-        wiredSeekBarZoom();
+        bookmarkFab_plus = (FloatingActionButton)findViewById(R.id.bookmark_fab_plus);
+        bookmarkFab_remove = (FloatingActionButton)findViewById(R.id.bookmark_fab_remove);
+        bookmarkFab_plus.setVisibility(View.INVISIBLE);
+        bookmarkFab_remove.setVisibility(View.INVISIBLE);
 
         basemapFab = (FloatingActionButton) findViewById(R.id.basemap_action_button);
-//        basemapFab.setImageIcon(Icon.);
+        final BasemapFragment basemapFragment = new BasemapFragment();
         basemapFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                CustomNavViewer.launchBasemapSelector(currentActivity);
+                CustomViewHandler.toggleBasemapSelector(currentActivity, basemapFragment);
             }
         });
+
 
         //welcome the user
         if (fusePortal != null && getIntent().getStringExtra("Authenticated").equalsIgnoreCase("Authenticated")) {
@@ -179,14 +190,81 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         fabIcon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Envelope current = fuseMapView.getCurrentViewpoint(Viewpoint.Type.BOUNDING_GEOMETRY).getTargetGeometry().getExtent();
                 panToCurrentLocation();
+            }
+        });
+
+        bookmarkFab = (FloatingActionButton)findViewById(R.id.bookmark_fab);
+        bookmarkFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleBookmarkFabVisibility();
+            }
+        });
+
+        bookmarkFab_plus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AppDialogBuilder.showBookmarkAlert((Activity) fuseMapView.getContext());
+            }
+        });
+
+        bookmarkFab_remove.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(final View v) {
+               AlertDialog.Builder removeAlert = new AlertDialog.Builder(MapActivity.this);
+                removeAlert.setMessage("All bookmarks will be permanently removed. \n Do you want to proceed?")
+                        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener(){
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                fuseMapView.getMap().getBookmarks().clear();
+                                Toast.makeText(v.getContext(), "All bookmarks removed", Toast.LENGTH_LONG).show();
+                                FragmentManager fragmentManager = getSupportFragmentManager();
+                                List<Fragment> listOfFragments = fragmentManager.getFragments();
+                                for(Fragment fragment : listOfFragments){
+                                    fragmentManager.beginTransaction().hide(fragment).commit();
+                                }
+                            }
+                        })
+                    .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Toast.makeText(v.getContext(), "User cancelled bookmark clearing.", Toast.LENGTH_LONG).show();
+                        }
+                    }).show();
             }
         });
 
 
     }
 
+    private void toggleBookmarkFabVisibility(){
+        if(bookmarkFab_plus.getVisibility() != View.VISIBLE && bookmarkFab_remove.getVisibility() != View.VISIBLE){
+            bookmarkFab_plus.setVisibility(View.VISIBLE);
+            bookmarkFab_remove.setVisibility(View.VISIBLE);
+
+            ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(bookmarkFab_plus, "translationY", 150f);
+            objectAnimator.setDuration(1000);
+            objectAnimator.start();
+
+            ObjectAnimator removeBookmarkFabAnimator = ObjectAnimator.ofFloat(bookmarkFab_remove, "translationY", 300f);
+            removeBookmarkFabAnimator.setDuration(1000);
+            removeBookmarkFabAnimator.start();
+        }else{
+
+            ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(bookmarkFab_plus, "translationY", -150f);
+            objectAnimator.setDuration(1000);
+            objectAnimator.start();
+
+            ObjectAnimator removeBookmarkFabAnimator = ObjectAnimator.ofFloat(bookmarkFab_remove, "translationY", -300f);
+            removeBookmarkFabAnimator.setDuration(1000);
+            removeBookmarkFabAnimator.start();
+            bookmarkFab_plus.setVisibility(View.INVISIBLE);
+            bookmarkFab_remove.setVisibility(View.INVISIBLE);
+        }
+
+    }
 
     private double[] getCoordsArray(Envelope extent) {
         return new double[]{extent.getXMin(), extent.getYMin(), extent.getXMax(), extent.getYMax()};
@@ -203,26 +281,6 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         }
     }
 
-    private void wiredSeekBarZoom() {
-        //wire the seekbar
-        seekBar = (SeekBar) findViewById(R.id.seekBar);
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                fuseMapView.setViewpointScaleAsync(progress * 10000);
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
-        });
-    }
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -637,6 +695,8 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             Double[] coords = {lat, longi};
             myTwitterApiClient = new MyTwitterAPIClientExtender(twitterSession);
             Response<List<ClosestWoeId>> responseRoot = myTwitterApiClient.getCustomTwitterService().getClosestWoeId(coords[0], coords[1]).execute();
+            if(responseRoot == null)
+                return  null;
             Long woeidVal = responseRoot.body().get(0).getWoeid();
             obtainTrendingTopics(myTwitterApiClient, woeidVal);
         } catch (IOException ioe) {
