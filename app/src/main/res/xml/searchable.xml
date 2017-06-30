@@ -4,4 +4,6 @@
     android:label="@string/app_name"
     android:hint="@string/search_hint"
     android:voiceSearchMode="showVoiceSearchButton|launchRecognizer"
+    android:searchSuggestAuthority="support.esri.com.fuse.models.RecentSearchSuggestionProvider"
+    android:searchSuggestSelection=" ?"
     />

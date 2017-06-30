@@ -56,7 +56,7 @@ dependencies {
         exclude group: 'com.android.support', module: 'recyclerview-v7'
     }
     compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.esri.arcgisruntime:arcgis-android:100.0.0'
+    compile 'com.esri.arcgisruntime:arcgis-android:100.1.0'
     compile 'com.android.support:support-v4:25.3.1'
     compile 'com.android.support:design:25.3.1'
     compile 'com.facebook.android:facebook-android-sdk:[4,5)'

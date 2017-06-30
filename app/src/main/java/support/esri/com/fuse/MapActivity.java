@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.SearchRecentSuggestions;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -100,6 +101,7 @@ import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.ClosestWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
+import support.esri.com.fuse.models.RecentSearchSuggestionProvider;
 import support.esri.com.fuse.models.Trend;
 import support.esri.com.fuse.models.TwitterTrends;
 
@@ -253,6 +255,9 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     private void handleSearchIntent(Intent intent) {
         if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
             String searchQuery = intent.getStringExtra(SearchManager.QUERY);
+            SearchRecentSuggestions recentSuggestions = new SearchRecentSuggestions(this,
+                    RecentSearchSuggestionProvider.AUTHORITY, RecentSearchSuggestionProvider.MODE);
+            recentSuggestions.saveRecentQuery(searchQuery, null);
         }
     }
 

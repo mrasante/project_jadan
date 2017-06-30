@@ -55,6 +55,10 @@
         <meta-data
             android:name="io.fabric.ApiKey"
             android:value="c253946f4c8c7b377ba9cb58fc6ff1074ab0be03" />
+
+        <provider
+            android:authorities="support.esri.com.fuse.models.RecentSearchSuggestionProvider"
+            android:name=".models.RecentSearchSuggestionProvider"/>
     </application>
 
 </manifest>
