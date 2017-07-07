@@ -7,11 +7,11 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.ColorFilter;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -34,7 +34,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -48,6 +47,7 @@ import com.esri.arcgisruntime.geometry.SpatialReference;
 import com.esri.arcgisruntime.loadable.LoadStatus;
 import com.esri.arcgisruntime.mapping.ArcGISMap;
 import com.esri.arcgisruntime.mapping.Basemap;
+import com.esri.arcgisruntime.mapping.BookmarkList;
 import com.esri.arcgisruntime.mapping.GeoElement;
 import com.esri.arcgisruntime.mapping.Viewpoint;
 import com.esri.arcgisruntime.mapping.popup.Popup;
@@ -113,7 +113,7 @@ import static support.esri.com.fuse.LogInActivity.twitterSession;
 public class MapActivity extends AppCompatActivity implements BasemapFragment.OnFragmentInteractionListener,
         BookmarkFragment.OnFragmentInteractionListener {
 
-    private static final String SYMBOL_URL = "http://static.arcgis.com/images/Symbols/Basic/BlueStickpin.png";
+    private static final String SYMBOL_URL = "http://static.arcgis.com/images/Symbols/Basic/RedStickpin.png";
     private static Toolbar toolbar;
     private ArcGISMap fuseMap;
     private MapView fuseMapView;
@@ -142,6 +142,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     private FloatingActionButton bookmarkFab;
     private FloatingActionButton bookmarkFab_plus;
     private FloatingActionButton bookmarkFab_remove;
+    private Intent startedIntent;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -150,9 +151,10 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         setContentView(R.layout.activity_map);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         currentActivity = this;
+        startedIntent = getIntent();
         setSupportActionBar(toolbar);
         setTitle("Social GIS");
-        handleSearchIntent(getIntent());
+        //handleSearchIntent(getIntent());
         //create and add the map with basemap
         fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
         fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
@@ -225,13 +227,18 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
 
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                fuseMapView.getMap().getBookmarks().clear();
-                                Toast.makeText(v.getContext(), "All bookmarks removed", Toast.LENGTH_LONG).show();
-                                FragmentManager fragmentManager = getSupportFragmentManager();
-                                List<Fragment> listOfFragments = fragmentManager.getFragments();
-                                for (Fragment fragment : listOfFragments) {
-                                    fragmentManager.beginTransaction().hide(fragment).commit();
-                                }
+                                BookmarkList bookmarks = fuseMapView.getMap().getBookmarks();
+                                if(bookmarks != null){
+                                    bookmarks.clear();
+                                    Toast.makeText(v.getContext(), "All bookmarks removed", Toast.LENGTH_LONG).show();
+                                    FragmentManager fragmentManager = getSupportFragmentManager();
+                                    List<Fragment> listOfFragments = fragmentManager.getFragments();
+                                    for (Fragment fragment : listOfFragments) {
+                                        fragmentManager.beginTransaction().hide(fragment).commit();
+                                    }
+                                }else
+                                    return;
+
                             }
                         })
                         .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
@@ -247,12 +254,19 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    @Override
+    protected void onResume(){
+        super.onResume();
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         handleSearchIntent(intent);
     }
 
     private void handleSearchIntent(Intent intent) {
+        setIntent(intent);
         if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
             String searchQuery = intent.getStringExtra(SearchManager.QUERY);
             SearchRecentSuggestions recentSuggestions = new SearchRecentSuggestions(this,
@@ -311,13 +325,15 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         String userFullName = null;
 
         //retrieve who sent you extra from intent.
-        String whoSentYou = getIntent().getStringExtra("whoSentYou");
+        String whoSentYou = AppPreferences.getSharedPreferences().getString("whoSentYou", "arcgis.com");
         if (whoSentYou.equalsIgnoreCase("arcgis.com")) {
             userImage = new PortalNetworkAsyncTask().execute().get();
             userFullName = fusePortal.getUser().getFullName();
         } else if (whoSentYou.equalsIgnoreCase("Twitter")) {
-            String imageUrl = localIntent.getStringExtra("twitterProfileUrl");
-            userFullName = localIntent.getStringExtra("twitterUsername");
+//            String imageUrl = localIntent.getStringExtra("twitterProfileUrl");
+            String imageUrl = AppPreferences.getSharedPreferences().getString("twitterProfileUrl", "TestURL");
+//            userFullName = localIntent.getStringExtra("twitterUsername");
+            userFullName = AppPreferences.getSharedPreferences().getString("twitterUsername", "TestUsername");
             userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
         } else if (whoSentYou.equalsIgnoreCase("Facebook")) {
             String imageUrl = localIntent.getStringExtra("facebookProfileUrl");
@@ -577,12 +593,13 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                         List<Popup> popup = identifieds.getPopups();
                         if (popup.size() == 0)
                             return;
-                        GeoElement geoElement = identifieds.getPopups().get(0).getGeoElement();
+                        GeoElement geoElement = popup.get(0).getGeoElement();
                         Callout callout = fuseMapView.getCallout();
                         callout.setGeoElement(geoElement, (Point) graphic.getGeometry());
                         Callout.ShowOptions showOptions = new Callout.ShowOptions(true, true, true);
                         callout.setShowOptions(showOptions);
-                        RelativeLayout callout_layout = (RelativeLayout) LayoutInflater.from(getApplicationContext()).inflate(R.layout.callout_layout, null);
+                        RelativeLayout callout_layout = (RelativeLayout) LayoutInflater.from(
+                                getApplicationContext()).inflate(R.layout.callout_layout, null);
                         callout.setContent(callout_layout);
                         callout.show();
                     } catch (InterruptedException | ExecutionException interExev) {

@@ -11,11 +11,20 @@ import android.support.v7.app.AppCompatActivity;
 public class AppPreferences extends AppCompatActivity {
 
     private static final String PREFERENCES = "REMEMBER ME";
+    public static SharedPreferences sharedPreferences;
+    public static SharedPreferences.Editor sharedEditor;
 
+    public AppPreferences(Context context){
+        sharedPreferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+    }
 
-    SharedPreferences getSharedPreferences() {
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
-        return sharedPreferences;
+   public static SharedPreferences.Editor getSharedPreferencesEditor() {
+       sharedEditor = sharedPreferences.edit();
+        return sharedEditor;
+    }
+
+    public static SharedPreferences getSharedPreferences(){
+        return  sharedPreferences;
     }
 
 
