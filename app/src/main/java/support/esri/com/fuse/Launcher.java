@@ -35,9 +35,9 @@ public class Launcher extends AppCompatActivity {
                     editor.putString("twitterProfileUrl", facebookImageUrl);
                     editor.putString("twitterUsername", facebookUserName);
                     editor.commit();
-                    DELAY_TIME = 500;
-                } else if (getIntent().getStringExtra("whoSentYou").equalsIgnoreCase("arcgis.com") && getIntent().getStringExtra("rememberMe").equalsIgnoreCase("Remembered")) {
-                    intent.putExtra("whoSentYou", "arcgis.com");
+                } else if (getIntent().getStringExtra("whoSentYou").equalsIgnoreCase("arcgis.com")) {
+                    editor.putString("whoSentYou", "arcgis.com");
+                    editor.commit();
                 }
                 startActivity(intent);
             }

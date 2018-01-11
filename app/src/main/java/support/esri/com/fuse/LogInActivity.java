@@ -69,6 +69,12 @@ public class LogInActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //create session object to help maintain app state
+        sessionKeeper = new SessionKeeper(getApplicationContext());
+        if(sessionKeeper != null){
+            if(checkIfRemember())
+                return;
+        }
         authConfig = new TwitterAuthConfig(getString(R.string.twitter_api_key), getString(R.string.twitter_api_secret));
         Fabric.with(this, new Twitter(authConfig));
         FacebookSdk.sdkInitialize(getApplicationContext());
@@ -82,8 +88,7 @@ public class LogInActivity extends AppCompatActivity {
             }
         });
 
-        //create session object to help maintain app state
-        sessionKeeper = new SessionKeeper(getApplicationContext());
+
         //for logging in with arcgis
         authenticateWithArcGIS();
 
@@ -92,7 +97,8 @@ public class LogInActivity extends AppCompatActivity {
 
         //for logging in with twitter
         authenticateWithTwitter();
-        checkIfRemember();
+
+
     }
 
 
@@ -102,15 +108,18 @@ public class LogInActivity extends AppCompatActivity {
     }
 
 
-    private void checkIfRemember() {
+    private boolean checkIfRemember() {
 
         if (sessionKeeper != null && sessionKeeper.isContainsCredentials("username", "password")) {
+            Log.i("Contains", "username and password");
             String username = sessionKeeper.getUsername();
             String password = sessionKeeper.getPassword();
             UserCredential userCredential = new UserCredential(username, password);
             progressFlag = false;
             new LoginAsyncTask().execute(userCredential);
-        }
+            return true;
+        }else
+            return false;
     }
 
     private void authenticateWithTwitter() {
@@ -264,6 +273,7 @@ public class LogInActivity extends AppCompatActivity {
         Intent intent = new Intent(getApplicationContext(), Launcher.class);
         intent.putExtra("whoSentYou", "arcgis.com");
         intent.putExtra("Credential_Log_In", "Authenticated");
+
         Object o = sessionKeeper != null ? intent.putExtra("rememberMe", "Remembered") : intent.putExtra("rememberMe", "NotRemembered");
         startActivity(intent);
     }
@@ -272,11 +282,9 @@ public class LogInActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         String checkString = getIntent().getStringExtra("loggedOut");
-      /*  if (checkString != null && checkString.equalsIgnoreCase("loggedOut")) {
-            fusePortal = null;
+        if (checkString != null && checkString.equalsIgnoreCase("loggedOut")) {
             showMessage("Signed out successfully");
         }
-*/
 
     }
 
@@ -316,8 +324,11 @@ public class LogInActivity extends AppCompatActivity {
                             Set<String> credSet = new HashSet<>();
                             credSet.add(credentials[0].getUsername());
                             credSet.add(credentials[0].getPassword());
-                            sessionKeeper.setUsername(credentials[0].getUsername());
-                            sessionKeeper.setPassword(credentials[0].getPassword());
+                            String username = credentials[0].getUsername();
+                            String password = credentials[0].getPassword();
+
+                            sessionKeeper.setUsername(username);
+                            sessionKeeper.setPassword(password);
                             arcgisLogin();
                         } else
                             arcgisLogin();

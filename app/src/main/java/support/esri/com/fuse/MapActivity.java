@@ -7,7 +7,6 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -60,15 +59,12 @@ import com.esri.arcgisruntime.mapping.view.LocationDisplay;
 import com.esri.arcgisruntime.mapping.view.MapView;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedEvent;
 import com.esri.arcgisruntime.mapping.view.NavigationChangedListener;
-import com.esri.arcgisruntime.security.UserCredential;
 import com.esri.arcgisruntime.symbology.PictureMarkerSymbol;
 import com.facebook.login.LoginManager;
 import com.mikepenz.crossfadedrawerlayout.view.CrossfadeDrawerLayout;
-import com.mikepenz.fastadapter.FastAdapter;
-import com.mikepenz.fastadapter.IAdapter;
 import com.mikepenz.fastadapter.commons.adapters.FastItemAdapter;
 import com.mikepenz.google_material_typeface_library.GoogleMaterial;
-import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
+//import com.mikepenz.itemanimators.AlphaCrossFadeAnimator;
 import com.mikepenz.materialdrawer.AccountHeader;
 import com.mikepenz.materialdrawer.AccountHeaderBuilder;
 import com.mikepenz.materialdrawer.Drawer;
@@ -97,7 +93,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Response;
-import support.esri.com.fuse.models.AppGeocoder;
 import support.esri.com.fuse.models.AppRateLimit;
 import support.esri.com.fuse.models.ClosestWoeId;
 import support.esri.com.fuse.models.FastAdapterItemImpl;
@@ -157,7 +152,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         //handleSearchIntent(getIntent());
         //create and add the map with basemap
         fuseMapView = (MapView) findViewById(R.id.fuse_map_view);
-        fuseMap = new ArcGISMap(Basemap.createImageryWithLabelsVector());
+        fuseMap = new ArcGISMap(Basemap.createStreetsNightVector());
         requestGPSLocation();
         fuseMapView.setMap(fuseMap);
         bookmarkFab_plus = (FloatingActionButton) findViewById(R.id.bookmark_fab_plus);
@@ -266,12 +261,15 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
     private void handleSearchIntent(Intent intent) {
-        setIntent(intent);
+//        setIntent(intent);
         if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
             String searchQuery = intent.getStringExtra(SearchManager.QUERY);
             SearchRecentSuggestions recentSuggestions = new SearchRecentSuggestions(this,
                     RecentSearchSuggestionProvider.AUTHORITY, RecentSearchSuggestionProvider.MODE);
             recentSuggestions.saveRecentQuery(searchQuery, null);
+
+
+
         }
     }
 
@@ -334,11 +332,11 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
             String imageUrl = AppPreferences.getSharedPreferences().getString("twitterProfileUrl", "TestURL");
 //            userFullName = localIntent.getStringExtra("twitterUsername");
             userFullName = AppPreferences.getSharedPreferences().getString("twitterUsername", "TestUsername");
-            userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
+            userImage = new BitmapViaNetworkAsync().execute(new URL(imageUrl)).get();
         } else if (whoSentYou.equalsIgnoreCase("Facebook")) {
             String imageUrl = localIntent.getStringExtra("facebookProfileUrl");
             userFullName = localIntent.getStringExtra("facebookUsername");
-            userImage = new BitmapViaNetwork().execute(new URL(imageUrl)).get();
+            userImage = new BitmapViaNetworkAsync().execute(new URL(imageUrl)).get();
         }
 
         //craete and populate the drawer
@@ -370,7 +368,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 .withSliderBackgroundColor(getResources().getColor(R.color.material_drawer_dark_background, null))
                 .withDrawerLayout(R.layout.drawer_layout)
                 .withHasStableIds(true)
-                .withItemAnimator(new AlphaCrossFadeAnimator())
+//                .withItemAnimator(new AlphaCrossFadeAnimator())
                 .withGenerateMiniDrawer(true)
                 .withToolbar(drawerToolbar)
                 .withAccountHeader(headerResult)
@@ -418,7 +416,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                                 showAbout();*/
                         }
                         if (drawerItem.getIdentifier() > 9 && drawerItem.getIdentifier() < 14) {
-                            final String basemapName = ((SecondaryDrawerItem) drawerItem).getName().getText();
+                            final String basemapName = ((SecondaryDrawerItem) drawerItem).getName().getText().toString();
                             fuseMap.setBasemap(BasemapChanger.changeBasemapTo(basemapName));
                             fuseMap.addBasemapChangedListener(new ArcGISMap.BasemapChangedListener() {
                                 @Override
@@ -539,7 +537,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                 fastItemAdapter.add(fastAdapterItemList);
                 recyclerView.setAdapter(fastItemAdapter);
                 fastItemAdapter.withSelectable(true);
-                fastItemAdapter.withOnClickListener(new FastAdapter.OnClickListener<FastAdapterItemImpl>() {
+                /*fastItemAdapter.withOnClickListener(new FastAdapter.OnClickListener<FastAdapterItemImpl>() {
                     @Override
                     public boolean onClick(View v, IAdapter<FastAdapterItemImpl> adapter, FastAdapterItemImpl item, int position) {
                         try {
@@ -552,7 +550,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
                         return true;
                     }
                 });
-
+*/
                 LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MapActivity.this);
                 recyclerView.setLayoutManager(linearLayoutManager);
                 fuseBottomSheetDialog.show();
@@ -613,8 +611,8 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
     }
 
     private void signoutAccount() {
-        final String whoSendYou = getIntent().getStringExtra("whoSentYou");
-        Log.e("whoSentYou", whoSendYou);
+        final String whoSendYou = AppPreferences.getSharedPreferences().getString("whoSentYou", "None");
+//        Log.e("whoSentYou", AppPreferences.getSharedPreferences().getString("whoSentYou", null));
         switch (whoSendYou) {
             case "arcgis.com":
                 new LoggOutAsyncTask().onPreExecute();
@@ -718,7 +716,7 @@ public class MapActivity extends AppCompatActivity implements BasemapFragment.On
         }
     }
 
-    private class BitmapViaNetwork extends AsyncTask<URL, Void, Bitmap> {
+    private class BitmapViaNetworkAsync extends AsyncTask<URL, Void, Bitmap> {
         @Override
         protected Bitmap doInBackground(URL... urls) {
             Bitmap bitmap = null;

@@ -15,26 +15,35 @@ public class SessionKeeper {
     private final SharedPreferences.Editor editor;
 
     public SessionKeeper(Context context) {
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        editor = sharedPreferences.edit();
+        sharedPreferences = new AppPreferences(context).getSharedPreferences(); //AppPreferences.getSharedPreferences();PreferenceManager.getDefaultSharedPreferences(context);
+        if(sharedPreferences != null){
+            editor = sharedPreferences.edit();
+        }else
+            editor = null;
     }
 
     public void setUsername(String username) {
-        editor.putString(username, "");
-        editor.commit();
+        if(editor != null){
+            editor.putString("username", username);
+            editor.commit();
+        }else
+            return;
     }
 
     public String getUsername() {
-        return sharedPreferences.getString("username", "");
+        return sharedPreferences.getString("username", "None");
     }
 
     public void setPassword(String password) {
-        editor.putString("password", password);
-        editor.commit();
+        if(editor != null){
+            editor.putString("password", password);
+            editor.commit();
+        }else
+            return;
     }
 
     public String getPassword() {
-        return sharedPreferences.getString("password", "");
+        return sharedPreferences.getString("password", "None");
     }
 
     public boolean clearSharedPreferences() {
@@ -44,8 +53,8 @@ public class SessionKeeper {
 
     public boolean isContainsCredentials(String username, String password) {
         boolean containsFlag = false;
-        boolean containsUsername = sharedPreferences.contains(username);
-        boolean containsPassword = sharedPreferences.contains(password);
+        boolean containsUsername = AppPreferences.getSharedPreferences().contains(username);
+        boolean containsPassword = AppPreferences.getSharedPreferences().contains(password);
         if (containsUsername && containsPassword) {
             containsFlag = true;
         }
